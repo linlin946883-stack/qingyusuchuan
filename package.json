@@ -1,0 +1,16 @@
+{
+  "name": "qingyusuchuan-frontend",
+  "version": "1.0.0",
+  "description": "轻羽速传 - 前端",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "keywords": ["轻羽速传", "情感传递", "传话服务"],
+  "author": "",
+  "license": "ISC",
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}

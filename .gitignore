@@ -1,0 +1,43 @@
+# Node modules
+node_modules/
+backend/node_modules/
+
+# 环境变量文件
+.env
+backend/.env
+
+# 日志文件
+*.log
+logs/
+backend/logs/
+
+# 操作系统文件
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE 配置
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# 临时文件
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# 构建输出
+dist/
+build/
+*.min.js
+*.min.css
+
+# 数据库备份
+*.sql.backup
+*.db
+
+# 上传文件
+uploads/

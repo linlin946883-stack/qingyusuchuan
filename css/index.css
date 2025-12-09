@@ -1,0 +1,435 @@
+.page {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #dafdf9 0%, #ecfdf5 100%);
+  padding-bottom: 80px;
+}
+
+/* 顶部 Hero 区域 */
+.hero-section {
+  padding: 30px 15px 20px;
+  text-align: center;
+  color: #000000;
+  margin-bottom: 20px;
+}
+
+.hero-title {
+  font-size: 28px;
+  font-weight: 800;
+  margin-bottom: 8px;
+  letter-spacing: 1px;
+}
+
+.hero-subtitle {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 10px;
+}
+
+.hero-desc {
+  font-size: 13px;
+  line-height: 1.6;
+  color: #1f2937;
+}
+
+/* 服务容器 */
+.services-container {
+  padding: 0 12px;
+  margin-bottom: 30px;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.section-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 12px;
+  padding: 0 6px;
+}
+
+/* 服务卡片 */
+.service-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px;
+  background: #ffffff;
+  border-radius: 10px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+  margin-bottom: 8px;
+  transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  border-left: 3px solid transparent;
+}
+
+.service-card:active {
+  transform: scale(0.98);
+}
+
+.service-card.sms-card {
+  border-left-color: #06b6d4;
+}
+
+.service-card.call-card {
+  border-left-color: #10b981;
+}
+
+.service-card.human-card {
+  border-left-color: #f59e0b;
+}
+
+.service-card > img {
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  object-fit: contain;
+}
+
+.card-body {
+  flex: 1;
+}
+
+.card-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 3px;
+}
+
+.card-desc {
+  font-size: 13px;
+  color: #1f2937;
+  margin-bottom: 6px;
+  line-height: 1.5;
+}
+
+.card-features {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.card-features img {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+}
+
+.feature-tag {
+  font-size: 11px;
+  padding: 2px 5px;
+  background: #f3f4f6;
+  border-radius: 4px;
+  color: #374151;
+}
+
+.card-arrow {
+  font-size: 14px;
+  color: #d1d5db;
+  align-self: center;
+  margin-left: 4px;
+}
+
+/* 优势区域 */
+.advantages-section {
+  padding: 0 12px;
+  margin-bottom: 30px;
+}
+
+.advantages-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.advantage-item {
+  padding: 12px 8px;
+  background: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+  text-align: center;
+  transition: all 0.3s;
+}
+
+.advantage-item:active {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+}
+
+.advantage-item img {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  margin-bottom: 6px;
+}
+
+.advantage-icon {
+  font-size: 20px;
+  margin-bottom: 4px;
+}
+
+.advantage-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 2px;
+}
+
+.advantage-desc {
+  font-size: 11px;
+  color: #1f2937;
+  line-height: 1.4;
+}
+
+/* 底部导航 */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 600px;
+  width: 100%;
+  display: flex;
+  justify-content: space-around;
+  background: #ffffff;
+  border-top: 0.5px solid #e5e7eb;
+  box-shadow: 0 -2px 6px rgba(0, 0, 0, 0.04);
+  z-index: 100;
+  height: 55px;
+}
+
+@media (max-width: 599px) {
+  .bottom-nav {
+    left: 0;
+    right: 0;
+    transform: none;
+  }
+}
+
+.nav-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s;
+}
+
+.nav-item:active {
+  background: #f9fafb;
+}
+
+.nav-item img {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+  margin-bottom: 4px;
+}
+
+.nav-icon {
+  font-size: 20px;
+  margin-bottom: 2px;
+}
+
+.nav-label {
+  font-size: 11px;
+  color: #000000;
+  transition: color 0.3s;
+}
+
+.nav-item.active .nav-label {
+  color: #06b6d4;
+  font-weight: 600;
+}
+
+/* PC 端响应式优化 */
+@media (min-width: 768px) {
+  .page {
+    max-width: 100%;
+    margin: 0 auto;
+    padding-left: 5%;
+    padding-right: 5%;
+  }
+
+  .hero-section {
+    padding: 50px 20px 40px;
+    max-width: 1000px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .hero-title {
+    font-size: 36px;
+  }
+
+  .hero-subtitle {
+    font-size: 20px;
+  }
+
+  .hero-desc {
+    font-size: 15px;
+  }
+
+  .services-container {
+    max-width: 900px;
+    padding: 0 20px;
+  }
+
+  .service-card {
+    padding: 18px 20px;
+    margin-bottom: 12px;
+  }
+
+  .service-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+
+  .card-badge {
+    font-size: 28px;
+    min-width: 40px;
+    height: 40px;
+  }
+
+  .card-title {
+    font-size: 17px;
+  }
+
+  .card-desc {
+    font-size: 14px;
+  }
+
+  /* 优势区域 PC 端优化 */
+  .advantages-section {
+    max-width: 1000px;
+    margin-left: auto;
+    margin-right: auto;
+    padding: 20px;
+  }
+
+  .section-title {
+    font-size: 20px;
+    text-align: center;
+    margin-bottom: 24px;
+  }
+
+  .advantages-grid {
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+    max-width: 100%;
+    margin: 0 auto;
+  }
+
+  .advantage-item {
+    flex: 1;
+    max-width: 280px;
+    padding: 24px 16px;
+    border-radius: 12px;
+    transition: all 0.3s ease;
+  }
+
+  .advantage-item:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+  }
+
+  .advantage-item:active {
+    transform: translateY(-2px);
+  }
+
+  .advantage-icon {
+    font-size: 32px;
+    margin-bottom: 12px;
+  }
+
+  .advantage-title {
+    font-size: 16px;
+    margin-bottom: 8px;
+  }
+
+  .advantage-desc {
+    font-size: 13px;
+    line-height: 1.6;
+  }
+
+  /* 底部导航在 PC 端优化 */
+  .bottom-nav {
+    max-width: 900px;
+    border-top: 0.5px solid #e5e7eb;
+  }
+}
+
+@media (min-width: 1024px) {
+  .page {
+    padding-left: 10%;
+    padding-right: 10%;
+  }
+
+  .hero-section {
+    padding: 60px 20px 50px;
+    max-width: 1200px;
+  }
+
+  .services-container {
+    max-width: 1000px;
+  }
+
+  /* 底部导航对齐服务卡片 */
+  .bottom-nav {
+    max-width: 1000px;
+    border-top: 0.5px solid #e5e7eb;
+  }
+
+  .advantages-section {
+    padding: 30px 40px;
+    max-width: 1200px;
+  }
+
+  .advantages-grid {
+    gap: 32px;
+  }
+
+  .advantage-item {
+    padding: 32px 24px;
+    max-width: 320px;
+  }
+
+  .advantage-icon {
+    font-size: 40px;
+    margin-bottom: 16px;
+  }
+
+  .advantage-title {
+    font-size: 18px;
+    margin-bottom: 10px;
+  }
+
+  .advantage-desc {
+    font-size: 14px;
+  }
+}
+
+@media (min-width: 1440px) {
+  .page {
+    padding-left: 15%;
+    padding-right: 15%;
+  }
+
+  .hero-section {
+    padding: 70px 20px 60px;
+  }
+
+  .advantages-section {
+    padding: 40px 60px;
+  }
+
+  .advantages-grid {
+    gap: 40px;
+  }
+
+  .advantage-item {
+    padding: 40px 28px;
+    max-width: 360px;
+  }
+}

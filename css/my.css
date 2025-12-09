@@ -1,0 +1,887 @@
+
+/* 页面整体 */
+.page-my {
+    background: linear-gradient(180deg, #dafdf9 0%, #ecfdf5 100%);
+    min-height: 100vh;
+    padding-bottom: 60px;
+}
+
+/* 移除顶部空白（my 页面无顶部导航） */
+.page-my .app-container,
+body:has(.page-my) .app-container {
+    padding-top: 0;
+}
+
+/* 账号信息区 */
+.account-section-my {
+    padding: 12px 15px;
+    margin-bottom: 12px;
+}
+
+.account-card-my {
+    display: flex;
+    align-items: center;
+    background: #ffffff;
+    border-radius: 10px;
+    padding: 14px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border-left: 2.5px solid #06b6d4;
+}
+
+.account-card-my:active {
+    transform: scale(0.98);
+}
+
+.account-avatar-my {
+    font-size: 32px;
+    margin-right: 10px;
+    flex-shrink: 0;
+}
+
+.account-info-my {
+    flex: 1;
+}
+
+.account-name-my {
+    font-size: 16px;
+    font-weight: 700;
+    color: #1f2937;
+    margin-bottom: 3px;
+}
+
+.account-phone-my {
+    font-size: 13px;
+    color: #6b7280;
+}
+
+/* 订单列表�?*/
+.orders-section-my {
+    padding: 0 12px;
+    margin-bottom: 20px;
+}
+
+.section-header-my {
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.section-header-my:active {
+    opacity: 0.7;
+}
+
+.section-title-row-my {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 6px 8px;
+}
+
+.section-title-my {
+    font-size: 16px;
+    font-weight: 700;
+    color: #1f2937;
+}
+
+.toggle-icon-my {
+    font-size: 12px;
+    color: #6b7280;
+    transition: transform 0.3s;
+}
+
+/* 订单筛选标�?*/
+.order-tabs-my {
+    display: flex;
+    gap: 6px;
+    padding: 0 6px 10px;
+    overflow-x: auto;
+}
+
+.tab-item-my {
+    padding: 5px 10px;
+    background: #f3f4f6;
+    border-radius: 10px;
+    font-size: 13px;
+    color: #6b7280;
+    white-space: nowrap;
+    transition: all 0.3s;
+    border: 1px solid transparent;
+    cursor: pointer;
+}
+
+.tab-item-my:active {
+    transform: scale(0.95);
+}
+
+.tab-item-my.active {
+    background: #06b6d4;
+    color: #ffffff;
+    font-weight: 600;
+    border-color: #0891b2;
+}
+
+.orders-list-my {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 400px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+/* 订单列表滚动条样式 */
+.orders-list-my::-webkit-scrollbar {
+    width: 4px;
+}
+
+.orders-list-my::-webkit-scrollbar-track {
+    background: #f0f0f0;
+    border-radius: 10px;
+}
+
+.orders-list-my::-webkit-scrollbar-thumb {
+    background: #d1d5db;
+    border-radius: 10px;
+}
+
+.orders-list-my::-webkit-scrollbar-thumb:hover {
+    background: #9ca3af;
+}
+
+/* 订单卡片 */
+.order-card-my {
+    background: #ffffff;
+    border-radius: 8px;
+    padding: 12px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+    border-left: 2.5px solid transparent;
+    transition: all 0.3s ease;
+}
+
+.order-card-my:active {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
+}
+
+.order-card-my.order-sms {
+    border-left-color: #06b6d4;
+}
+
+.order-card-my.order-call {
+    border-left-color: #10b981;
+}
+
+.order-card-my.order-human {
+    border-left-color: #f59e0b;
+}
+
+/* 订单头部 */
+.order-header-my {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.order-type-badge-my {
+    font-size: 20px;
+    flex-shrink: 0;
+}
+
+.order-meta-my {
+    flex: 1;
+}
+
+.order-title-my {
+    font-size: 14px;
+    font-weight: 700;
+    color: #1f2937;
+    margin-bottom: 2px;
+}
+
+.order-time-my {
+    font-size: 11px;
+    color: #9ca3af;
+}
+
+.order-status-badge-my {
+    font-size: 10px;
+    padding: 3px 6px;
+    border-radius: 6px;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+.order-status-badge-my.status-pending {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.order-status-badge-my.status-processing {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.order-status-badge-my.status-completed {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.order-status-badge-my.status-failed {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+/* 订单摘要 */
+.order-summary-my {
+    padding: 7px 0;
+    margin-bottom: 8px;
+    border-top: 0.5px solid #f3f4f6;
+    border-bottom: 0.5px solid #f3f4f6;
+}
+
+.summary-label-my {
+    font-size: 11px;
+    font-weight: 600;
+    color: #6b7280;
+    margin-right: 4px;
+}
+
+.summary-text-my {
+    font-size: 12px;
+    color: #1f2937;
+    line-height: 1.5;
+    word-break: break-word;
+}
+
+/* 订单详情模态框 */
+.order-detail-modal-my {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: none;
+    z-index: 1000;
+    animation: fadeIn 0.3s ease;
+}
+
+.order-detail-modal-my.show {
+    display: flex;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(20px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.modal-overlay-my {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(2px);
+}
+
+.modal-content-my {
+    position: relative;
+    background: #ffffff;
+    border-radius: 16px;
+    margin: auto;
+    width: 90%;
+    max-width: 500px;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    animation: slideUp 0.3s ease;
+    display: flex;
+    flex-direction: column;
+}
+
+.modal-header-my {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 20px 12px;
+    border-bottom: 1px solid #f3f4f6;
+    flex-shrink: 0;
+}
+
+.modal-title-my {
+    font-size: 18px;
+    font-weight: 700;
+    color: #1f2937;
+    margin: 0;
+}
+
+.modal-close-my {
+    background: none;
+    border: none;
+    font-size: 24px;
+    color: #6b7280;
+    cursor: pointer;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    border-radius: 6px;
+}
+
+.modal-close-my:active {
+    background: #f3f4f6;
+    color: #1f2937;
+}
+
+.modal-body-my {
+    padding: 20px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.modal-footer-my {
+    padding: 12px 20px 20px;
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    border-top: 1px solid #f3f4f6;
+    flex-shrink: 0;
+}
+
+/* 详情项 */
+.detail-item-my {
+    display: flex;
+    margin-bottom: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #f3f4f6;
+}
+
+.detail-item-my:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+
+.detail-label-my {
+    font-size: 13px;
+    font-weight: 600;
+    color: #6b7280;
+    min-width: 80px;
+    flex-shrink: 0;
+}
+
+.detail-value-my {
+    font-size: 14px;
+    color: #1f2937;
+    flex: 1;
+    word-break: break-word;
+}
+
+.detail-status-badge-my {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.detail-status-badge-my.status-pending {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.detail-status-badge-my.status-processing {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.detail-status-badge-my.status-completed {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.detail-status-badge-my.status-failed {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.detail-type-icon-my {
+    font-size: 48px;
+    text-align: center;
+    margin-bottom: 12px;
+}
+
+.btn-secondary-my {
+    padding: 10px 20px;
+    background: #f3f4f6;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #1f2937;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-secondary-my:active {
+    background: #e5e7eb;
+    transform: scale(0.98);
+}
+
+/* 订单底部 */
+.order-footer-my {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.order-price-my {
+    font-size: 14px;
+    font-weight: 700;
+    color: #06b6d4;
+}
+
+.order-actions-my {
+    display: flex;
+    gap: 6px;
+}
+
+.action-btn-my {
+    font-size: 11px;
+    padding: 4px 8px;
+    background: #f3f4f6;
+    color: #06b6d4;
+    border-radius: 4px;
+    border: 0.5px solid #e5e7eb;
+}
+
+/* 空状�?*/
+.empty-state-my {
+    text-align: center;
+    padding: 40px 20px;
+}
+
+.empty-icon-my {
+    font-size: 40px;
+    margin-bottom: 8px;
+}
+
+.empty-text-my {
+    font-size: 14px;
+    font-weight: 600;
+    color: #1f2937;
+    margin-bottom: 4px;
+}
+
+.empty-hint-my {
+    font-size: 12px;
+    color: #9ca3af;
+}
+
+/* 其他功能�?*/
+.records-section-my {
+    padding: 0 12px;
+    margin-bottom: 30px;
+}
+
+.record-item-my {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #ffffff;
+    border-radius: 8px;
+    padding: 10px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+    transition: all 0.3s;
+    margin-bottom: 6px;
+    cursor: pointer;
+}
+
+.record-item-my:active {
+    transform: scale(0.98);
+}
+
+.record-icon-my {
+    font-size: 20px;
+    flex-shrink: 0;
+}
+
+.record-content-my {
+    flex: 1;
+}
+
+.record-title-my {
+    font-size: 14px;
+    font-weight: 600;
+    color: #1f2937;
+    margin-bottom: 2px;
+}
+
+.record-desc-my {
+    font-size: 11px;
+    color: #9ca3af;
+}
+
+.arrow-my {
+    font-size: 12px;
+    color: #d1d5db;
+}
+
+/* 页脚 */
+.footer-my {
+    padding: 12px 15px 20px;
+    text-align: center;
+}
+
+.logout-btn-my {
+    width: 100%;
+    padding: 14px 0;
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    border-radius: 25px;
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: 600;
+    border: none;
+    box-shadow: 0 4px 10px rgba(239, 68, 68, 0.25);
+    cursor: pointer;
+}
+
+.logout-btn-my:active {
+    opacity: 0.9;
+    transform: scale(0.98);
+}
+
+/* 底部导航 */
+.bottom-nav-my {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    max-width: 800px;
+    width: 100%;
+    display: flex;
+    justify-content: space-around;
+    background: #ffffff;
+    border-top: 0.5px solid #e5e7eb;
+    box-shadow: 0 -2px 6px rgba(0, 0, 0, 0.04);
+    z-index: 100;
+    height: 55px;
+}
+
+@media (max-width: 799px) {
+    .bottom-nav-my {
+        left: 0;
+        right: 0;
+        transform: none;
+    }
+}
+
+.nav-item-my {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s;
+    cursor: pointer;
+}
+
+.nav-item-my:active {
+    background: #f9fafb;
+}
+
+.nav-item-my img {
+    width: 24px;
+    height: 24px;
+    object-fit: contain;
+    margin-bottom: 4px;
+}
+
+.nav-icon-my {
+    font-size: 20px;
+    margin-bottom: 2px;
+}
+
+.nav-label-my {
+    font-size: 11px;
+    color: #000000;
+    transition: color 0.3s;
+}
+
+.nav-item-my.active .nav-label-my {
+    color: #06b6d4;
+    font-weight: 600;
+}
+
+/* PC 端响应式优化 */
+@media (min-width: 768px) {
+    .page-my {
+        padding-left: 5%;
+        padding-right: 5%;
+        max-width: 100%;
+    }
+
+    .account-section-my {
+        max-width: 800px;
+        margin-left: auto;
+        margin-right: auto;
+        padding: 20px 15px;
+    }
+
+    .account-card-my {
+        padding: 20px;
+        border-radius: 12px;
+    }
+
+    .account-card-my:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .account-avatar-my {
+        font-size: 40px;
+        margin-right: 16px;
+    }
+
+    .account-name-my {
+        font-size: 18px;
+    }
+
+    .account-phone-my {
+        font-size: 14px;
+    }
+
+    .orders-section-my {
+        max-width: 800px;
+        margin-left: auto;
+        margin-right: auto;
+        padding: 0 15px;
+    }
+
+    .section-title-my {
+        font-size: 18px;
+    }
+
+    .order-tabs-my {
+        padding: 0 6px 12px;
+        gap: 8px;
+    }
+
+    .tab-item-my {
+        padding: 6px 14px;
+        font-size: 14px;
+    }
+
+    .tab-item-my:hover {
+        background: #e5e7eb;
+    }
+
+    .tab-item-my.active:hover {
+        background: #0891b2;
+    }
+
+    .orders-list-my {
+        gap: 10px;
+        max-height: 500px;
+    }
+
+    .order-card-my {
+        padding: 16px;
+        border-radius: 10px;
+    }
+
+    .order-card-my:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    }
+
+    .order-type-badge-my {
+        font-size: 24px;
+    }
+
+    .order-title-my {
+        font-size: 15px;
+    }
+
+    .order-time-my {
+        font-size: 12px;
+    }
+
+    .records-section-my {
+        max-width: 800px;
+        margin-left: auto;
+        margin-right: auto;
+        padding: 0 15px;
+    }
+
+    .record-item-my {
+        padding: 16px;
+    }
+
+    .record-item-my:hover {
+        background: #f9fafb;
+    }
+
+    .record-icon-my {
+        font-size: 24px;
+        width: 44px;
+        height: 44px;
+    }
+
+    .record-title-my {
+        font-size: 15px;
+    }
+
+    .record-desc-my {
+        font-size: 13px;
+    }
+
+    .footer-my {
+        max-width: 800px;
+        margin-left: auto;
+        margin-right: auto;
+        padding: 20px 15px;
+    }
+
+    .logout-btn-my {
+        font-size: 15px;
+        padding: 12px;
+    }
+
+    .bottom-nav-my {
+        max-width: 800px;
+        border-top: 0.5px solid #e5e7eb;
+    }
+
+    .empty-state-my {
+        padding: 50px 20px;
+    }
+
+    .empty-icon-my {
+        font-size: 56px;
+    }
+
+    .empty-text-my {
+        font-size: 16px;
+    }
+
+    .modal-content-my {
+        max-width: 600px;
+        width: 85%;
+    }
+}
+
+@media (min-width: 1024px) {
+    .page-my {
+        padding-left: 10%;
+        padding-right: 10%;
+    }
+
+    .account-section-my,
+    .orders-section-my,
+    .records-section-my,
+    .footer-my {
+        max-width: 900px;
+    }
+
+    .account-card-my {
+        padding: 24px;
+    }
+
+    .account-avatar-my {
+        font-size: 48px;
+        margin-right: 20px;
+    }
+
+    .account-name-my {
+        font-size: 20px;
+    }
+
+    .account-phone-my {
+        font-size: 15px;
+    }
+
+    .section-title-my {
+        font-size: 20px;
+    }
+
+    .orders-list-my {
+        max-height: 600px;
+    }
+
+    .order-card-my {
+        padding: 18px;
+    }
+
+    .record-item-my {
+        padding: 18px;
+    }
+
+    .bottom-nav-my {
+        max-width: 900px;
+        border-top: 0.5px solid #e5e7eb;
+    }
+
+    .modal-content-my {
+        max-width: 700px;
+    }
+}
+
+@media (min-width: 1440px) {
+    .page-my {
+        padding-left: 15%;
+        padding-right: 15%;
+    }
+
+    .account-section-my,
+    .orders-section-my,
+    .records-section-my,
+    .footer-my {
+        max-width: 1000px;
+    }
+
+    .account-card-my {
+        padding: 28px;
+    }
+
+    .orders-list-my {
+        gap: 12px;
+    }
+
+    .order-card-my {
+        padding: 20px;
+    }
+
+    .record-item-my {
+        padding: 20px;
+    }
+
+    .bottom-nav-my {
+        max-width: 1000px;
+        border-top: 0.5px solid #e5e7eb;
+    }
+
+    .modal-content-my {
+        max-width: 800px;
+    }
+}

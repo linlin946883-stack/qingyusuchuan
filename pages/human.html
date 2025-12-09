@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>人工传话 - 轻羽速传</title>
+    <link rel="stylesheet" href="../css/common.css">
+    <link rel="stylesheet" href="../css/human.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- 顶部导航 -->
+        <div class="app-header">
+            <button class="back-btn" onclick="window.history.back()">
+                <span class="icon">←</span>
+            </button>
+            <div class="header-spacer"></div>
+        </div>
+
+        <!-- 主容器 -->
+        <div class="main-content">
+          <div class="page">
+            <!-- 顶部介绍卡片 -->
+            <div class="hero-card">
+              <img src="../icon/weixin.svg" alt="">
+              <div class="hero-title">人工传话服务</div>
+              <div class="hero-desc">专业情感专员为您真诚传达心意</div>
+              <div class="hero-tags">
+                <span class="tag">🎯 精准传达</span>
+                <span class="tag">❤️ 有温度</span>
+                <span class="tag">✅ 高成功率</span>
+              </div>
+            </div>
+
+            <!-- 表单卡片 -->
+            <div class="form-card-human">
+              <!-- 1. 联系方式 -->
+              <div class="form-item-human">
+                <div class="item-header-human">
+                  <label class="item-label-human">选择联系方式</label>
+                  <span class="help-icon-human" id="openFaq">?</span>
+                </div>
+                <div class="contact-selector" id="contactSelector">
+                  <span class="selector-text placeholder" id="contactDisplay">点击选择联系方式</span>
+                  <span class="arrow-icon">›</span>
+                </div>
+              </div>
+
+              <!-- 2. Ta的账号 -->
+              <div class="form-item-human">
+                <label class="item-label-human">Ta的账号</label>
+                <input id="targetAccount" class="account-input-human" type="text" placeholder="请输入对方的账号/ID" maxlength="100">
+              </div>
+
+              <!-- 3. 传话时间 -->
+              <div class="form-item-human">
+                <label class="item-label-human">期望送达时间</label>
+                <div class="time-selector-human" id="timeSelectorHuman">
+                  <span class="selector-text placeholder" id="timeDisplayHuman">立即传达（或选择指定时间）</span>
+                  <span class="close-mini-human" id="resetTimeHuman" style="display:none;">✕</span>
+                </div>
+              </div>
+
+              <!-- 4. 传话内容 -->
+              <div class="form-item-human">
+                <div class="item-header-human">
+                  <label class="item-label-human">传话内容</label>
+                  <span class="preset-link-human" id="openPresetHuman">📝 内置文案</span>
+                </div>
+                <div class="message-box-human">
+                  <textarea id="messageHuman" class="message-textarea-human" placeholder="请输入您想传达的话语&#10;可以是表白、道歉、祝福、挽回等任何您想说的话..." maxlength="500"></textarea>
+                  <div class="message-footer-human">
+                    <span class="char-count-human" id="charCountHuman">0/500</span>
+                    <span class="price-tag-human" id="priceTagHuman" style="display:none;">￥25/次</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 5. 备注（可选） -->
+              <div class="form-item-human">
+                <label class="item-label-human">备注说明（可选）</label>
+                <textarea id="remarkHuman" class="remark-textarea-human" placeholder="如有特殊要求或说明，请在此填写" maxlength="200"></textarea>
+              </div>
+            </div>
+
+            <!-- 底部提交按钮 -->
+            <div class="submit-wrapper-human">
+              <button class="submit-btn-human" id="submitBtnHuman">
+                <span class="btn-icon-human">💬</span>
+                <span class="btn-text-human">立即提交传话</span>
+              </button>
+            </div>
+
+            <!-- 联系方式选择弹窗（网格） -->
+            <div id="contactModal" class="modal-overlay-human" style="display:none;">
+              <div class="select-modal-human" id="selectModalInner">
+                <div class="modal-header-human">
+                  <span class="modal-title-human">选择联系方式</span>
+                  <span class="close-btn-human" id="closeContact">✕</span>
+                </div>
+                <div class="method-grid-human" id="methodGrid"></div>
+              </div>
+            </div>
+
+            <!-- 时间选择底部弹窗（多列picker） -->
+            <div id="pickerSheetHuman" class="picker-sheet-overlay-human" style="display:none;">
+              <div class="picker-sheet-human" id="pickerSheetInnerHuman">
+                <div class="picker-header-human">
+                  <span class="picker-cancel-human" data-picker-cancel>取消</span>
+                  <span class="picker-title-human">选择传话时间</span>
+                  <span class="picker-confirm-human" data-picker-confirm>确认</span>
+                </div>
+                <div class="picker-view-human" id="pickerViewHuman">
+                  <div class="picker-column-human" data-col="0" id="pickerSheetHuman_colYear"></div>
+                  <div class="picker-column-human" data-col="1" id="pickerSheetHuman_colMonth"></div>
+                  <div class="picker-column-human" data-col="2" id="pickerSheetHuman_colDay"></div>
+                  <div class="picker-column-human" data-col="3" id="pickerSheetHuman_colHour"></div>
+                  <div class="picker-column-human" data-col="4" id="pickerSheetHuman_colMinute"></div>
+                  <div class="picker-column-human" data-col="5" id="pickerSheetHuman_colSecond"></div>
+                  <div class="picker-indicator-human"></div>
+                </div>
+                <div class="quick-actions-human">
+                  <span class="quick-btn-human" data-picker-now>🕒 立即发送</span>
+                  <span class="quick-btn-human" data-picker-after-hour>⏰ 1小时后</span>
+                  <span class="quick-btn-human" data-picker-tomorrow>🌅 明天同时</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- 文案选择弹窗 -->
+            <div id="presetModalHuman" class="modal-overlay-human" style="display:none;">
+              <div class="preset-modal-human" id="presetModalInner">
+                <div class="modal-header-human">
+                  <span class="modal-title-human">选择文案模板</span>
+                  <span class="close-btn-human" id="closePresetHuman">✕</span>
+                </div>
+                <div id="presetTabsHuman" class="preset-tabs-human"></div>
+                <div id="presetListHuman" class="preset-list-human"></div>
+              </div>
+            </div>
+
+            <!-- FAQ服务说明弹窗 -->
+            <div id="faqModal" class="modal-overlay-human" style="display:none;">
+              <div class="notice-modal-human" id="faqModalInner">
+                <div class="modal-header-human">
+                  <span class="modal-title-human">服务说明</span>
+                  <span class="close-btn-human" id="closeFaq">✕</span>
+                </div>
+                <div class="notice-scroll-human">
+                  <div class="faq-item-human">
+                    <span class="faq-q-human">⏰ 多久可以完成传话？</span>
+                    <span class="faq-a-human">传话将在您选择的"期望时间"内完成。如对方不同意添加好友或其他原因导致无法传达，将自动退款。</span>
+                  </div>
+                  <div class="faq-item-human">
+                    <span class="faq-q-human">📋 怎么查看传话反馈？</span>
+                    <span class="faq-a-human">可在"我的"->"传话记录"中查看详细反馈结果和对方回复。</span>
+                  </div>
+                  <div class="faq-item-human">
+                    <span class="faq-q-human">📸 可以传递照片/语音吗？</span>
+                    <span class="faq-a-human">如需传递图片、语音等多媒体内容，请联系客服并提供订单号，我们会协助处理。</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+    </div>
+
+    <script src="../js/common.js"></script>
+    <script src="../js/picker.js"></script>
+    <script src="../js/human.js"></script>
+</body>
+</html>
