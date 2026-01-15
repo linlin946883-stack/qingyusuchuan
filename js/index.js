@@ -1,3 +1,8 @@
+// 导入依赖
+import './config.js';
+import './api-client.js';
+import './common.js';
+
 // 首页初始化
 document.addEventListener('DOMContentLoaded', function() {
   

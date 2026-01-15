@@ -88,8 +88,11 @@ const storage = {
   }
 };
 
-// API 基础URL
-const API_BASE_URL = 'http://localhost:3000/api';
+// API 基础URL - 从 config.js 读取
+// 生产环境应该在 config.js 中设置 window.API_BASE_URL
+if (!window.API_BASE_URL) {
+  window.API_BASE_URL = 'http://localhost:3000/api';
+}
 
 // ==================== Token 管理 ====================
 
@@ -175,25 +178,13 @@ function clearUserInfo() {
   removeToken();
 }
 
-// 检查是否是管理员
-function isAdmin() {
-  const userInfo = getUserInfo();
-  if (!userInfo || !userInfo.role) {
-    return false;
-  }
-  return userInfo.role === 'admin' || userInfo.role === 'super_admin';
-}
-
-// 刷新用户信息（包含角色）
+// 刷新用户信息
 async function refreshUserInfo() {
   if (!hasToken()) {
     return null;
   }
   try {
-    const response = await fetch(`${API_BASE_URL}/auth/user`, {
-      headers: getAuthHeaders()
-    });
-    const data = await response.json();
+    const data = await apiClient.get('/auth/user');
     if (data.code === 0 && data.data) {
       const user = data.data;
       const userInfo = {
@@ -219,23 +210,16 @@ async function refreshUserInfo() {
 // 用户登录（微信授权）
 async function userLogin(openid, nickname, avatar) {
   try {
-    const response = await fetch(`${API_BASE_URL}/auth/login`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        openid,
-        nickname,
-        avatar
-      })
-    });
-    
-    const data = await response.json();
+    const data = await apiClient.post('/auth/login', {
+      openid,
+      nickname,
+      avatar
+    }, { skipCSRF: true });
     
     if (data.code === 0 && data.data.token) {
       // 保存 Token
       setToken(data.data.token);
+      apiClient.setAuthToken(data.data.token);
       
       // 保存用户信息
       const userInfo = {
@@ -255,30 +239,24 @@ async function userLogin(openid, nickname, avatar) {
     console.error('登录失败:', error);
     return {
       code: 500,
-      message: '网络错误'
+      message: ''
     };
   }
 }
 
 // 用户注册（用户名密码）
-async function userRegister(username, password, phone) {
+async function userRegister(username, password, phone, verifyCode) {
   try {
-    const response = await fetch(`${API_BASE_URL}/auth/register`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        username,
-        password,
-        phone
-      })
-    });
-    
-    const data = await response.json();
+    const data = await apiClient.post('/auth/register', {
+      username,
+      password,
+      phone,
+      verifyCode
+    }, { skipCSRF: true });
     
     if (data.code === 0 && data.data.token) {
       setToken(data.data.token);
+      apiClient.setAuthToken(data.data.token);
       
       const userInfo = {
         user_id: data.data.user.id,
@@ -296,7 +274,7 @@ async function userRegister(username, password, phone) {
     console.error('注册失败:', error);
     return {
       code: 500,
-      message: '网络错误'
+      message: ''
     };
   }
 }
@@ -304,21 +282,14 @@ async function userRegister(username, password, phone) {
 // 用户登录（用户名密码）
 async function userLoginPassword(phone, password) {
   try {
-    const response = await fetch(`${API_BASE_URL}/auth/login-password`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        phone,
-        password
-      })
-    });
-    
-    const data = await response.json();
+    const data = await apiClient.post('/auth/login-password', {
+      phone,
+      password
+    }, { skipCSRF: true });
     
     if (data.code === 0 && data.data.token) {
       setToken(data.data.token);
+      apiClient.setAuthToken(data.data.token);
       
       const userInfo = {
         user_id: data.data.user.id,
@@ -335,8 +306,8 @@ async function userLoginPassword(phone, password) {
   } catch (error) {
     console.error('登录失败:', error);
     return {
-      code: 500,
-      message: '网络错误'
+      code: error.code || 500,
+      message: error.message || ''
     };
   }
 }
@@ -344,8 +315,7 @@ async function userLoginPassword(phone, password) {
 // 查询手机号是否已注册
 async function checkPhoneExists(phone) {
   try {
-    const response = await fetch(`${API_BASE_URL}/auth/phone/${phone}`);
-    const data = await response.json();
+    const data = await apiClient.get(`/auth/phone/${phone}`, {}, { skipCSRF: true });
 
     if (data.code === 0 && data.data) {
       return !!data.data.exists;
@@ -361,23 +331,13 @@ async function checkPhoneExists(phone) {
 // 验证 Token 有效性
 async function verifyToken() {
   try {
-    const response = await fetch(`${API_BASE_URL}/auth/verify`, {
-      method: 'GET',
-      headers: getAuthHeaders()
-    });
-    
-    const data = await response.json();
-    
-    if (response.status === 401) {
-      handleApiError(response, data);
-    }
-    
+    const data = await apiClient.get('/auth/verify', {}, { skipCSRF: true });
     return data;
   } catch (error) {
     console.error('Token 验证失败:', error);
     return {
       code: 500,
-      message: '网络错误'
+      message: ''
     };
   }
 }
@@ -418,13 +378,7 @@ function generateSubmitToken() {
  */
 async function requestSubmitToken(type) {
   try {
-    const response = await fetch(`${API_BASE_URL}/orders/submit-token`, {
-      method: 'POST',
-      headers: getAuthHeaders(),
-      body: JSON.stringify({ type })
-    });
-    
-    const data = await response.json();
+    const data = await apiClient.post('/orders/submit-token', { type });
     
     if (data.code === 0 && data.data && data.data.token) {
       return data.data.token;
@@ -474,27 +428,17 @@ async function createOrder(type, contactPhone, contactMethod, content, scheduled
     // 生成幂等性密钥
     const idempotencyKey = generateIdempotencyKey();
     
-    const response = await fetch(`${API_BASE_URL}/orders/create`, {
-      method: 'POST',
-      headers: getAuthHeaders(),
-      body: JSON.stringify({
-        type,
-        contact_phone: contactPhone,
-        contact_method: contactMethod,
-        content,
-        scheduled_time: scheduledTime,
-        price,
-        remark,
-        idempotency_key: idempotencyKey,
-        submit_token: submitToken
-      })
+    const data = await apiClient.post('/orders/create', {
+      type,
+      contact_phone: contactPhone,
+      contact_method: contactMethod,
+      content,
+      scheduled_time: scheduledTime,
+      price,
+      remark,
+      idempotency_key: idempotencyKey,
+      submit_token: submitToken
     });
-    
-    const data = await response.json();
-    
-    if (response.status === 401) {
-      handleApiError(response, data);
-    }
     
     return data;
   } catch (error) {
@@ -509,16 +453,7 @@ async function createOrder(type, contactPhone, contactMethod, content, scheduled
 // 获取用户订单
 async function getOrders(userId) {
   try {
-    const response = await fetch(`${API_BASE_URL}/orders/user/${userId}`, {
-      headers: getAuthHeaders()
-    });
-    
-    const data = await response.json();
-    
-    if (response.status === 401) {
-      handleApiError(response, data);
-    }
-    
+    const data = await apiClient.get(`/orders/user/${userId}`);
     return data;
   } catch (error) {
     console.error('获取订单失败:', error);
@@ -533,17 +468,7 @@ async function getOrders(userId) {
 // 获取单个订单详情
 async function getOrderDetail(orderId) {
   try {
-    const response = await fetch(`${API_BASE_URL}/orders/${orderId}`, {
-      method: 'GET',
-      headers: getAuthHeaders()
-    });
-    
-    const data = await response.json();
-    
-    if (response.status === 401) {
-      handleApiError(response, data);
-    }
-    
+    const data = await apiClient.get(`/orders/${orderId}`);
     return data;
   } catch (error) {
     console.error('获取订单详情失败:', error);
@@ -557,9 +482,8 @@ async function getOrderDetail(orderId) {
 // 获取预设文案
 async function getPresets(type = 'sms') {
   try {
-    const url = type ? `${API_BASE_URL}/presets?type=${type}` : `${API_BASE_URL}/presets`;
-    const response = await fetch(url);
-    const data = await response.json();
+    const params = type ? { type } : {};
+    const data = await apiClient.get('/presets', params, { skipCSRF: true });
     
     if (data.code === 0 && data.data) {
       // 转换返回格式为 { 分类名: [文案列表] }
@@ -579,8 +503,7 @@ async function getPresets(type = 'sms') {
 // 获取价格配置（公开接口，无需认证）
 async function getPrices() {
   try {
-    const response = await fetch(`${API_BASE_URL}/config/prices`);
-    const data = await response.json();
+    const data = await apiClient.get('/config/prices', {}, { skipAuth: true, skipCSRF: true });
     
     if (data.code === 0 && data.data) {
       return data.data;
@@ -605,18 +528,7 @@ async function getPrices() {
 // 充值
 async function rechargeBalance(amount) {
   try {
-    const response = await fetch(`${API_BASE_URL}/payment/recharge`, {
-      method: 'POST',
-      headers: getAuthHeaders(),
-      body: JSON.stringify({ amount })
-    });
-    
-    const data = await response.json();
-    
-    if (response.status === 401) {
-      handleApiError(response, data);
-    }
-    
+    const data = await apiClient.post('/payment/recharge', { amount });
     return data;
   } catch (error) {
     console.error('充值失败:', error);
@@ -646,83 +558,6 @@ function truncateContent(content, length = 60) {
   return content.length > length ? content.substring(0, length) + '...' : content;
 }
 
-// ==================== 敏感词检测 ====================
-
-/**
- * 检测单个文本是否包含敏感词
- * @param {string} text - 要检测的文本
- * @returns {Promise<Object>} { pass: boolean, sensitiveWords: Array }
- */
-async function checkSensitiveWord(text) {
-  try {
-    if (!text || !hasToken()) {
-      return { pass: true, sensitiveWords: [] };
-    }
-
-    const response = await fetch(`${API_BASE_URL}/sensitive-word/check`, {
-      method: 'POST',
-      headers: getAuthHeaders(),
-      body: JSON.stringify({ text })
-    });
-
-    const data = await response.json();
-
-    if (response.status === 401) {
-      handleApiError(response, data);
-      return { pass: true, sensitiveWords: [] };
-    }
-
-    if (data.code === 0) {
-      return {
-        pass: data.data.pass,
-        sensitiveWords: data.data.sensitiveWords || []
-      };
-    }
-
-    return { pass: true, sensitiveWords: [] };
-  } catch (error) {
-    console.error('敏感词检测失败:', error);
-    // 检测失败时默认放行
-    return { pass: true, sensitiveWords: [] };
-  }
-}
-
-/**
- * 批量检测多个文本
- * @param {Array<string>} texts - 要检测的文本数组
- * @returns {Promise<Object>}
- */
-async function checkMultipleSensitiveWords(texts) {
-  try {
-    if (!texts || texts.length === 0 || !hasToken()) {
-      return { pass: true, results: [] };
-    }
-
-    const response = await fetch(`${API_BASE_URL}/sensitive-word/check-batch`, {
-      method: 'POST',
-      headers: getAuthHeaders(),
-      body: JSON.stringify({ texts })
-    });
-
-    const data = await response.json();
-
-    if (response.status === 401) {
-      handleApiError(response, data);
-      return { pass: true, results: [] };
-    }
-
-    if (data.code === 0) {
-      return data.data;
-    }
-
-    return { pass: true, results: [] };
-  } catch (error) {
-    console.error('批量敏感词检测失败:', error);
-    return { pass: true, results: [] };
-  }
-}
-
-
 // 防抖函数
 function debounce(func, wait) {
   let timeout;
@@ -748,3 +583,50 @@ function throttle(func, limit) {
   };
 }
 
+// ES 模块导出
+export {
+  // 滚动控制
+  disableBodyScroll,
+  enableBodyScroll,
+  // UI 组件
+  escapeHtml,
+  showToast,
+  showLoading,
+  hideLoading,
+  // Token 管理
+  setToken,
+  getToken,
+  removeToken,
+  hasToken,
+  getAuthHeaders,
+  handleApiError,
+  // 用户信息
+  getUserInfo,
+  setUserInfo,
+  clearUserInfo,
+  refreshUserInfo,
+  // 认证相关
+  userLogin,
+  userRegister,
+  userLoginPassword,
+  checkPhoneExists,
+  verifyToken,
+  userLogout,
+  // 订单相关
+  generateIdempotencyKey,
+  generateSubmitToken,
+  requestSubmitToken,
+  createOrder,
+  getOrders,
+  getOrderDetail,
+  // 配置相关
+  getPresets,
+  getPrices,
+  // 支付相关
+  rechargeBalance,
+  // 工具函数
+  formatDate,
+  truncateContent,
+  debounce,
+  throttle
+};

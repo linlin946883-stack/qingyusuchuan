@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="轻羽速传 - 管理后台">
+  <title>轻羽速传 - 管理后台</title>
+  <link rel="stylesheet" href="./css/admin.css">
+</head>
+<body>
+  <div class="admin-container">
+    <!-- 登录页面 -->
+    <div id="loginPage" class="page active">
+      <div class="login-card">
+        <div class="login-header">
+          <h1>轻羽速传</h1>
+          <p>管理后台登录</p>
+        </div>
+        <form id="loginForm" class="login-form">
+          <div class="form-group">
+            <label for="username">用户名</label>
+            <input type="text" id="username" name="username" placeholder="请输入管理员用户名" required>
+            <span class="error-msg" id="usernameError"></span>
+          </div>
+          <div class="form-group">
+            <label for="password">密码</label>
+            <input type="password" id="password" name="password" placeholder="请输入密码" required>
+            <span class="error-msg" id="passwordError"></span>
+          </div>
+          <button type="submit" class="btn btn-primary">登 录</button>
+          <span class="error-msg" id="loginError"></span>
+        </form>
+      </div>
+    </div>
+
+    <!-- 主页面 -->
+    <div id="mainPage" class="page">
+      <!-- 顶部导航 -->
+      <div class="admin-header">
+        <div class="header-left">
+          <div class="logo">轻羽速传</div>
+          <span class="subtitle">管理后台</span>
+        </div>
+        <div class="header-right">
+          <span class="admin-name" id="adminName"></span>
+          <button class="btn btn-text" id="logoutBtn">退出登录</button>
+        </div>
+      </div>
+
+      <!-- 侧边栏 -->
+      <div class="admin-sidebar">
+        <nav class="sidebar-nav">
+          <div class="nav-section">
+            <div class="nav-title">主菜单</div>
+            <a href="#" class="nav-item active" data-page="dashboard">
+              <span class="icon">📊</span>
+              <span class="label">仪表盘</span>
+            </a>
+            <a href="#" class="nav-item" data-page="orders">
+              <span class="icon">📦</span>
+              <span class="label">订单管理</span>
+            </a>
+            <a href="#" class="nav-item" data-page="users">
+              <span class="icon">👥</span>
+              <span class="label">用户管理</span>
+            </a>
+          </div>
+          <div class="nav-section">
+            <div class="nav-title">其他</div>
+            <a href="#" class="nav-item" data-page="settings">
+              <span class="icon">⚙️</span>
+              <span class="label">系统设置</span>
+            </a>
+          </div>
+        </nav>
+      </div>
+
+      <!-- 内容区域 -->
+      <div class="admin-content">
+        <!-- 仪表盘页面 -->
+        <div id="dashboardPage" class="content-page active">
+          <div class="page-header">
+            <h1>仪表盘</h1>
+            <p>实时数据统计与分析</p>
+          </div>
+
+          <!-- 数据卡片 -->
+          <div class="dashboard-cards">
+            <div class="data-card">
+              <div class="card-title">总用户数</div>
+              <div class="card-value" id="totalUsers">-</div>
+              <div class="card-subtitle">今日新增: <span id="newUsers">-</span></div>
+            </div>
+            <div class="data-card">
+              <div class="card-title">总订单数</div>
+              <div class="card-value" id="totalOrders">-</div>
+              <div class="card-subtitle">今日新增: <span id="newOrders">-</span></div>
+            </div>
+            <div class="data-card">
+              <div class="card-title">总收入</div>
+              <div class="card-value" id="totalRevenue">¥0</div>
+              <div class="card-subtitle">今日收入: <span id="dailyRevenue">¥0</span></div>
+            </div>
+            <div class="data-card">
+              <div class="card-title">平均客单价</div>
+              <div class="card-value" id="avgOrderValue">¥0</div>
+              <div class="card-subtitle">基于完成订单</div>
+            </div>
+          </div>
+
+          <!-- 图表区域 -->
+          <div class="charts-section">
+            <div class="chart-card">
+              <div class="chart-title">订单类型分布</div>
+              <div class="chart-container" id="typeChart">
+                <div class="loading">加载中...</div>
+              </div>
+            </div>
+            <div class="chart-card">
+              <div class="chart-title">订单状态分布</div>
+              <div class="chart-container" id="statusChart">
+                <div class="loading">加载中...</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 趋势表 -->
+          <div class="trend-section">
+            <div class="trend-header">
+              <h3>最近7天订单趋势</h3>
+            </div>
+            <table class="trend-table" id="trendTable">
+              <thead>
+                <tr>
+                  <th>日期</th>
+                  <th>订单数</th>
+                </tr>
+              </thead>
+              <tbody id="trendTableBody">
+                <tr><td colspan="2" class="loading">加载中...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- 订单管理页面 -->
+        <div id="ordersPage" class="content-page">
+          <div class="page-header">
+            <h1>订单管理</h1>
+            <div class="header-actions">
+              <input type="text" id="orderSearch" class="search-input" placeholder="搜索订单ID或用户ID...">
+              <select id="orderTypeFilter" class="filter-select">
+                <option value="">所有类型</option>
+                <option value="sms">传话短信</option>
+                <option value="call">和解电话</option>
+                <option value="human">人工传话</option>
+              </select>
+              <select id="orderStatusFilter" class="filter-select">
+                <option value="">所有状态</option>
+                <option value="pending">待处理</option>
+                <option value="processing">处理中</option>
+                <option value="completed">已完成</option>
+                <option value="failed">已失败</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="table-section">
+            <table class="admin-table" id="ordersTable">
+              <thead>
+                <tr>
+                  <th>订单ID</th>
+                  <th>用户ID</th>
+                  <th>类型</th>
+                  <th>联系电话</th>
+                  <th>价格</th>
+                  <th>状态</th>
+                  <th>创建时间</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody id="ordersTableBody">
+                <tr><td colspan="8" class="loading">加载中...</td></tr>
+              </tbody>
+            </table>
+            <div class="pagination" id="ordersPagination">
+              <button class="page-btn" id="prevPage" disabled>上一页</button>
+              <span class="page-info" id="pageInfo">-</span>
+              <button class="page-btn" id="nextPage">下一页</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 用户管理页面 -->
+        <div id="usersPage" class="content-page">
+          <div class="page-header">
+            <h1>用户管理</h1>
+            <div class="header-actions">
+              <input type="text" id="userSearch" class="search-input" placeholder="搜索手机号或ID...">
+            </div>
+          </div>
+
+          <div class="table-section">
+            <table class="admin-table" id="usersTable">
+              <thead>
+                <tr>
+                  <th>用户ID</th>
+                  <th>手机号</th>
+                  <th>昵称</th>
+                  <th>消费</th>
+                  <th>注册时间</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody id="usersTableBody">
+                <tr><td colspan="6" class="loading">加载中...</td></tr>
+              </tbody>
+            </table>
+            <div class="pagination" id="usersPagination">
+              <button class="page-btn" id="userPrevPage" disabled>上一页</button>
+              <span class="page-info" id="userPageInfo">-</span>
+              <button class="page-btn" id="userNextPage">下一页</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 系统设置页面 -->
+        <div id="settingsPage" class="content-page">
+          <div class="page-header">
+            <h1>系统设置</h1>
+          </div>
+
+          <div class="settings-section">
+            <div class="settings-card">
+              <div class="settings-title">价格配置</div>
+              <div class="settings-content">
+                <div class="setting-item">
+                  <label>传话短信价格</label>
+                  <div class="input-group">
+                    <input type="number" id="smsPrice" step="0.01" min="0" placeholder="¥2.99">
+                    <span class="unit">元</span>
+                  </div>
+                </div>
+                <div class="setting-item">
+                  <label>和解电话价格</label>
+                  <div class="input-group">
+                    <input type="number" id="callPrice" step="0.01" min="0" placeholder="¥19.00">
+                    <span class="unit">元</span>
+                  </div>
+                </div>
+                <div class="setting-item">
+                  <label>人工传话价格</label>
+                  <div class="input-group">
+                    <input type="number" id="humanPrice" step="0.01" min="0" placeholder="¥29.00">
+                    <span class="unit">元</span>
+                  </div>
+                </div>
+                <button class="btn btn-primary" id="savePricesBtn">保存价格配置</button>
+              </div>
+            </div>
+
+            <div class="settings-card">
+              <div class="settings-title">数据导出</div>
+              <div class="settings-content">
+                <div class="setting-item">
+                  <label>导出订单数据</label>
+                  <div class="date-range">
+                    <input type="date" id="exportStartDate">
+                    <span>至</span>
+                    <input type="date" id="exportEndDate">
+                    <button class="btn btn-secondary" id="exportBtn">导出为CSV</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 模态框 -->
+  <div id="orderDetailModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>订单详情</h2>
+        <button class="close-btn">&times;</button>
+      </div>
+      <div class="modal-body" id="orderDetailBody">
+        <div class="loading">加载中...</div>
+      </div>
+      <div class="modal-footer">
+        <div class="order-actions" id="orderActions"></div>
+        <button class="btn btn-secondary" onclick="closeModal('orderDetailModal')">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="userDetailModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>用户详情</h2>
+        <button class="close-btn">&times;</button>
+      </div>
+      <div class="modal-body" id="userDetailBody">
+        <div class="loading">加载中...</div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeModal('userDetailModal')">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="adjustBalanceModal" class="modal">
+    <div class="modal-content" style="max-width: 400px;">
+      <div class="modal-header">
+        <h2>调整用户余额</h2>
+        <button class="close-btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="adjustType">操作类型</label>
+          <select id="adjustType" class="form-control">
+            <option value="add">充值</option>
+            <option value="subtract">扣费</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="adjustAmount">金额</label>
+          <input type="number" id="adjustAmount" step="0.01" min="0" class="form-control" placeholder="请输入金额">
+        </div>
+        <div class="form-group">
+          <label for="adjustRemark">备注</label>
+          <textarea id="adjustRemark" class="form-control" placeholder="请输入备注信息"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary" onclick="submitAdjustBalance()">确认调整</button>
+        <button class="btn btn-secondary" onclick="closeModal('adjustBalanceModal')">取消</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./js/admin.js"></script>
+</body>
+</html>

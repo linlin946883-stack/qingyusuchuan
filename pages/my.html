@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>我的 - 轻羽速传</title>
+    <title>我的</title>
     <link rel="stylesheet" href="../css/common.css">
     <link rel="stylesheet" href="../css/my.css">
 </head>
@@ -13,7 +13,7 @@
         <div class="page-my">
             <!-- 账号信息区 -->
             <div class="account-section-my">
-                <div class="account-card-my" onclick="handleLoginClick()">
+                <div class="account-card-my" id="accountCard">
                     <img src="../icon/touxiang.svg" alt="头像" style="width:30px;height:30px;">
                     <div class="account-info-my">
                         <div class="account-name-my" id="accountName">未登录</div>
@@ -24,7 +24,7 @@
 
             <!-- 订单列表区 -->
             <div class="orders-section-my" id="ordersSection">
-                <div class="section-header-my" onclick="toggleOrdersMy()">
+                <div class="section-header-my" id="toggleOrdersBtn">
                     <div class="section-title-row-my">
                         <span class="section-title-my">📦 我的订单</span>
                         <span class="toggle-icon-my" id="toggleIconMy">▶</span>
@@ -33,10 +33,10 @@
 
                 <!-- 订单筛选标签 -->
                 <div class="order-tabs-my" id="orderTabsMy" style="display: none;">
-                    <span class="tab-item-my active" onclick="switchTabMy('all')">全部</span>
-                    <span class="tab-item-my" onclick="switchTabMy('pending')">待处理</span>
-                    <span class="tab-item-my" onclick="switchTabMy('completed')">已发送</span>
-                    <span class="tab-item-my" onclick="switchTabMy('failed')">发送失败</span>
+                    <span class="tab-item-my active" data-tab="all">全部</span>
+                    <span class="tab-item-my" data-tab="pending">待处理</span>
+                    <span class="tab-item-my" data-tab="completed">已发送</span>
+                    <span class="tab-item-my" data-tab="failed">发送失败</span>
                 </div>
 
                 <!-- 订单列表 -->
@@ -57,7 +57,7 @@
                 <div class="section-title-my">其他功能</div>
                 
                 <!-- 联系客服 -->
-                <div class="record-item-my" onclick="contactServiceMy()">
+                <div class="record-item-my" id="contactServiceBtn">
                     <img src="../icon/kefu.svg" alt="客服" style="width:24px;height:24px;">
                     <div class="record-content-my">
                         <div class="record-title-my">联系客服</div>
@@ -69,31 +69,31 @@
 
             <!-- 订单详情模态框 -->
             <div class="order-detail-modal-my" id="orderDetailModal">
-                <div class="modal-overlay-my" onclick="closeOrderDetailMy()"></div>
+                <div class="modal-overlay-my" id="modalOverlay"></div>
                 <div class="modal-content-my">
                     <div class="modal-header-my">
                         <h2 class="modal-title-my" id="modalTitle">订单详情</h2>
-                        <button class="modal-close-my" onclick="closeOrderDetailMy()">✕</button>
+                        <button class="modal-close-my" id="modalCloseBtn">✕</button>
                     </div>
                     <div class="modal-body-my" id="modalBody">
                         <!-- 内容动态插入 -->
                     </div>
                     <div class="modal-footer-my">
-                        <button class="btn-secondary-my" onclick="closeOrderDetailMy()">关闭</button>
+                        <button class="btn-secondary-my" id="modalFooterCloseBtn">关闭</button>
                     </div>
                 </div>
             </div>
 
             <!-- 退出登录按钮 -->
             <div class="footer-my">
-                <button class="logout-btn-my" id="logoutBtn" onclick="handleLogoutMy()" style="display: none;">
+                <button class="logout-btn-my" id="logoutBtn" style="display: none;">
                     退出登录
                 </button>
             </div>
 
             <!-- 底部导航栏 -->
             <div class="bottom-nav-my">
-                <div class="nav-item-my" onclick="goHomeMy()">
+                <div class="nav-item-my" id="goHomeBtn">
                     <img src="../icon/icon_shouye.svg" alt="首页">
                     <div class="nav-label-my">首页</div>
                 </div>
@@ -104,8 +104,6 @@
             </div>
         </div>
     </div>
-
-    <script src="../js/common.js"></script>
-    <script src="../js/my.js"></script>
+<script type="module" src="../js/my.js"></script>
 </body>
 </html>

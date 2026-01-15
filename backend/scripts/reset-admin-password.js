@@ -1,48 +1,75 @@
-const pool = require('../config/database');
-const bcrypt = require('bcryptjs');
+const mysql = require('mysql2/promise');
+const bcryptjs = require('bcryptjs');
+require('dotenv').config();
 
-async function resetAdminPassword() {
-  const connection = await pool.getConnection();
-  
-  try {
-    console.log('正在重置管理员密码...');
-    
-    // 查询管理员账户
-    const [users] = await connection.execute(
-      'SELECT id, phone, nickname, role FROM users WHERE phone = ?',
-      ['15208594927']
-    );
-    
-    if (users.length === 0) {
-      console.log('未找到管理员账户，正在创建...');
-      
-      // 创建管理员账户
-      const hashedPassword = await bcrypt.hash('admin123456', 10);
-      await connection.execute(
-        `INSERT INTO users (openid, phone, password_hash, nickname, avatar, balance, role)
-         VALUES ('admin_default', '15208594927', ?, '系统管理员', '👨‍💼', 0, 'admin')`,
-        [hashedPassword]
-      );
-      
-      console.log('✓ 管理员账户创建成功');
-    } else {
-      // 重置密码
-      const hashedPassword = await bcrypt.hash('admin123456', 10);
-      await connection.execute(
-        'UPDATE users SET password_hash = ?, role = ? WHERE phone = ?',
-        [hashedPassword, 'admin', '15208594927']
-      );
-      
-      console.log('✓ 管理员密码重置成功');
-    }
-    
-  } catch (error) {
-    console.error('重置失败:', error);
-    throw error;
-  } finally {
-    connection.release();
-    await pool.end();
-  }
+/**
+ * 重置管理员密码脚本
+ * 使用方法: node scripts/reset-admin-password.js username newPassword
+ * 示例: node scripts/reset-admin-password.js admin newPassword123
+ */
+
+const args = process.argv.slice(2);
+
+if (args.length < 2) {
+  console.error('❌ 参数错误');
+  console.log('使用方法: node scripts/reset-admin-password.js username newPassword');
+  console.log('示例: node scripts/reset-admin-password.js admin newPassword123\n');
+  process.exit(1);
 }
 
-resetAdminPassword();
+const username = args[0];
+const newPassword = args[1];
+
+const resetPassword = async () => {
+  let connection;
+  try {
+    console.log('开始重置管理员密码...\n');
+
+    // 连接到数据库
+    connection = await mysql.createConnection({
+      host: process.env.DB_HOST || 'localhost',
+      user: process.env.DB_USER || 'root',
+      password: process.env.DB_PASSWORD || '',
+      database: process.env.DB_NAME || 'qingyusuchuan'
+    });
+
+    console.log('✓ 已连接到数据库');
+
+    // 检查管理员是否存在
+    const [admin] = await connection.query(
+      `SELECT id, username FROM users WHERE username = ? AND role = 'admin'`,
+      [username]
+    );
+
+    if (admin.length === 0) {
+      console.error(`❌ 管理员 "${username}" 不存在\n`);
+      await connection.end();
+      process.exit(1);
+    }
+
+    // 加密新密码
+    const hashedPassword = await bcryptjs.hash(newPassword, 10);
+
+    // 更新密码
+    await connection.query(
+      `UPDATE users SET password_hash = ? WHERE id = ? AND role = 'admin'`,
+      [hashedPassword, admin[0].id]
+    );
+
+    console.log('✓ 密码重置成功！\n');
+    console.log('========================================');
+    console.log('📱 管理员账户信息:');
+    console.log('========================================');
+    console.log(`用户名:   ${username}`);
+    console.log(`新密码:   ${newPassword}`);
+    console.log('========================================\n');
+
+    await connection.end();
+    console.log('✅ 操作完成！');
+  } catch (error) {
+    console.error('❌ 重置失败:', error.message);
+    process.exit(1);
+  }
+};
+
+resetPassword();

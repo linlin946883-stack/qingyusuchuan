@@ -1,3 +1,16 @@
+// 导入依赖
+import './config.js';
+import './api-client.js';
+import { 
+  disableBodyScroll, 
+  enableBodyScroll, 
+  hasToken, 
+  getUserInfo, 
+  requestSubmitToken,
+  createOrder,
+  getPrices,
+  showToast
+} from './common.js';
 
 let isLoggedInCall = false;
 let currentPrices = { sms: 2.99, call: 19.00, human: 25.00 }; // 默认价格
@@ -236,9 +249,31 @@ async function handleSubmitOrder(e) {
         );
 
         if (result.code === 0) {
-            showToast('订单创建成功');
-            currentSubmitToken = null; // Token已使用
-            setTimeout(() => { window.location.href = '../index.html'; }, 800);
+            const orderId = result.data.order_id;
+            const orderPrice = result.data.price;
+            
+            try {
+                // 调起微信支付
+                const payResult = await window.wechatPay.executePay(
+                    orderId,
+                    orderPrice,
+                    '轻羽速传-电话服务'
+                );
+                
+                if (payResult.success) {
+                    showToast('支付成功');
+                    currentSubmitToken = null;
+                    setTimeout(() => { window.location.href = '../index.html'; }, 800);
+                }
+            } catch (payError) {
+                if (payError.cancelled) {
+                    showToast('支付已取消');
+                } else {
+                    showToast(payError.message || '支付失败');
+                }
+                currentSubmitToken = null;
+                requestPageSubmitTokenCall();
+            }
         } else {
             currentSubmitToken = null; // 清空Token
             requestPageSubmitTokenCall(); // 重新请求

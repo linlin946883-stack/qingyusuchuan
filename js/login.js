@@ -1,3 +1,15 @@
+// 导入依赖
+import './config.js';
+import './api-client.js';
+import {
+  setToken,
+  setUserInfo,
+  userLoginPassword,
+  userRegister,
+  checkPhoneExists,
+  showToast
+} from './common.js';
+
 document.addEventListener('DOMContentLoaded', () => {
   const phoneInput = document.getElementById('phoneInput');
   const phoneError = document.getElementById('phoneError');
@@ -6,7 +18,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const loginPassword = document.getElementById('loginPassword');
   const loginPasswordError = document.getElementById('loginPasswordError');
   const registerVerifyCode = document.getElementById('registerVerifyCode');
-  const registerVerifyCodeError = document.getElementById('registerVerifyCodeError');
   const getVerifyCodeBtn = document.getElementById('getVerifyCodeBtn');
   const registerPassword = document.getElementById('registerPassword');
   const registerPasswordError = document.getElementById('registerPasswordError');
@@ -132,7 +143,6 @@ document.addEventListener('DOMContentLoaded', () => {
     resetVerifyCodeState();
     registerVerifyCode.value = '';
     registerPassword.value = '';
-    registerVerifyCodeError.textContent = '';
     registerPasswordError.textContent = '';
     setActionState(false, '立即注册');
   }
@@ -178,33 +188,59 @@ document.addEventListener('DOMContentLoaded', () => {
     const phone = phoneInput.value;
     
     if (!PHONE_REGEX.test(phone)) {
-      registerVerifyCodeError.textContent = '请先输入有效的手机号';
       return;
     }
 
+    // 禁用按钮并开始倒计时
     if (verifyCodeTimer) {
       clearInterval(verifyCodeTimer);
     }
 
     verifyCodeCountdown = VERIFY_CODE_DURATION;
     getVerifyCodeBtn.disabled = true;
-    getVerifyCodeBtn.textContent = `${verifyCodeCountdown}s`;
+    getVerifyCodeBtn.textContent = `发送中...`;
 
-    verifyCodeTimer = setInterval(() => {
-      verifyCodeCountdown -= 1;
-      if (verifyCodeCountdown > 0) {
+    try {
+      // 调用发送验证码 API
+      const response = await fetch(`${window.API_BASE_URL}/auth/send-code`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ phone })
+      });
+
+      const result = await response.json();
+
+      if (result.code === 0) {
+        // 发送成功，开始倒计时
+        
+        // 开发环境在控制台显示验证码（方便测试）
+        if (result.debug_code) {
+          console.log(`[开发环境] 验证码: ${result.debug_code}`);
+        }
+
+        // 开始倒计时
         getVerifyCodeBtn.textContent = `${verifyCodeCountdown}s`;
-        return;
+        verifyCodeTimer = setInterval(() => {
+          verifyCodeCountdown -= 1;
+          if (verifyCodeCountdown > 0) {
+            getVerifyCodeBtn.textContent = `${verifyCodeCountdown}s`;
+            return;
+          }
+
+          clearInterval(verifyCodeTimer);
+          verifyCodeTimer = null;
+          resetVerifyCodeState();
+        }, 1000);
+
+      } else {
+        // 发送失败
+        resetVerifyCodeState();
       }
-
-      clearInterval(verifyCodeTimer);
-      verifyCodeTimer = null;
+    } catch (error) {
       resetVerifyCodeState();
-    }, 1000);
-
-    // 这里后续可以调用实际的发送验证码 API
-    // 例如: await sendVerifyCode(phone);
-    registerVerifyCodeError.textContent = 123456
+    }
   }
 
   async function submitAction() {
@@ -245,11 +281,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const verifyCode = registerVerifyCode.value.trim();
     const password = registerPassword.value.trim();
 
-    registerVerifyCodeError.textContent = '';
     registerPasswordError.textContent = '';
 
     if (!verifyCode) {
-      registerVerifyCodeError.textContent = '请输入验证码';
       valid = false;
     }
 
@@ -263,7 +297,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     setActionState(true, '注册中...');
-    const result = await userRegister(verifyCode, password, phone);
+    // 传递验证码参数：userRegister(username, password, phone, verifyCode)
+    const result = await userRegister(phone, password, phone, verifyCode);
     setActionState(false, '立即注册');
 
     if (result.code === 0) {
@@ -274,12 +309,67 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  /**
+   * URL白名单验证
+   * 防止开放重定向攻击
+   */
+  function isUrlSafe(url) {
+    if (!url) return false;
+    
+    try {
+      // 允许的URL模式（白名单）
+      const allowedPatterns = [
+        // 相对路径
+        /^\.\.\/[a-zA-Z0-9_\-\/\.]+\.html$/,
+        /^\/[a-zA-Z0-9_\-\/\.]+\.html$/,
+        // 站内页面
+        /^(pages\/|\.\.\/pages\/)[a-zA-Z0-9_\-]+\.html$/,
+        /^[a-zA-Z0-9_\-]+\.html$/,
+        // index.html 特殊处理
+        /^(\.\.\/)?index\.html$/
+      ];
+      
+      // 检查是否匹配任一白名单模式
+      const isPatternMatch = allowedPatterns.some(pattern => pattern.test(url));
+      if (isPatternMatch) {
+        return true;
+      }
+      
+      // 如果是完整URL，检查域名
+      if (url.startsWith('http://') || url.startsWith('https://')) {
+        const urlObj = new URL(url);
+        const currentHost = window.location.host;
+        
+        // 只允许同域名跳转
+        if (urlObj.host === currentHost) {
+          // 进一步检查路径是否安全
+          const path = urlObj.pathname;
+          const safePathPattern = /^\/[a-zA-Z0-9_\-\/\.]*\.html$/;
+          return safePathPattern.test(path) || path === '/' || path === '/index.html';
+        }
+        
+        return false;
+      }
+      
+      return false;
+    } catch (error) {
+      console.error('URL验证失败:', error);
+      return false;
+    }
+  }
+
   function redirectAfterAuth() {
-    const targetUrl = returnUrlParam
+    let targetUrl = returnUrlParam
       ? decodeURIComponent(returnUrlParam)
       : (document.referrer && !document.referrer.includes('login.html'))
         ? document.referrer
         : '../index.html';
+
+    // URL安全验证
+    if (!isUrlSafe(targetUrl)) {
+      console.warn('不安全的重定向URL，已重定向到首页:', targetUrl);
+      targetUrl = '../index.html';
+    }
 
     setTimeout(() => {
       window.location.replace(targetUrl);
@@ -287,7 +377,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   window.goBack = function goBack() {
-    if (document.referrer) {
+    if (document.referrer && isUrlSafe(document.referrer)) {
       window.history.back();
     } else {
       window.location.href = '../index.html';

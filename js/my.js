@@ -1,4 +1,19 @@
-
+// 导入依赖
+import './config.js';
+import './api-client.js';
+import {
+  hasToken,
+  getUserInfo,
+  userLogout,
+  getOrders,
+  getOrderDetail,
+  formatDate,
+  truncateContent,
+  showLoading,
+  hideLoading,
+  showToast,
+  verifyToken
+} from './common.js';
 
 // 状态管理
 let isLoggedInMy = false;
@@ -13,7 +28,69 @@ let currentTabMy = 'all';
 // 页面初始化
 document.addEventListener('DOMContentLoaded', () => {
     checkLoginStatusMy();
+    
+    // 绑定所有事件监听器
+    setupEventListeners();
 });
+
+// 设置所有事件监听器
+function setupEventListeners() {
+    // 账号卡片点击
+    const accountCard = document.getElementById('accountCard');
+    if (accountCard) {
+        accountCard.addEventListener('click', handleLoginClick);
+    }
+    
+    // 订单展开/收起按钮
+    const toggleBtn = document.getElementById('toggleOrdersBtn');
+    if (toggleBtn) {
+        toggleBtn.addEventListener('click', toggleOrdersMy);
+    }
+    
+    // 订单标签切换
+    const tabItems = document.querySelectorAll('.tab-item-my');
+    tabItems.forEach(tab => {
+        tab.addEventListener('click', function() {
+            const tabType = this.getAttribute('data-tab');
+            if (tabType) {
+                switchTabMy(tabType);
+            }
+        });
+    });
+    
+    // 联系客服按钮
+    const contactBtn = document.getElementById('contactServiceBtn');
+    if (contactBtn) {
+        contactBtn.addEventListener('click', contactServiceMy);
+    }
+    
+    // 模态框关闭按钮
+    const modalOverlay = document.getElementById('modalOverlay');
+    const modalCloseBtn = document.getElementById('modalCloseBtn');
+    const modalFooterCloseBtn = document.getElementById('modalFooterCloseBtn');
+    
+    if (modalOverlay) {
+        modalOverlay.addEventListener('click', closeOrderDetailMy);
+    }
+    if (modalCloseBtn) {
+        modalCloseBtn.addEventListener('click', closeOrderDetailMy);
+    }
+    if (modalFooterCloseBtn) {
+        modalFooterCloseBtn.addEventListener('click', closeOrderDetailMy);
+    }
+    
+    // 退出登录按钮
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', handleLogoutMy);
+    }
+    
+    // 底部导航 - 返回首页
+    const goHomeBtn = document.getElementById('goHomeBtn');
+    if (goHomeBtn) {
+        goHomeBtn.addEventListener('click', goHomeMy);
+    }
+}
 
 // 检查登录状态
 function checkLoginStatusMy() {
@@ -438,3 +515,5 @@ function stopOrderPolling() {
     }
 }
 
+// 将需要在 HTML 中使用的函数暴露到全局作用域
+window.showOrderDetailMy = showOrderDetailMy;

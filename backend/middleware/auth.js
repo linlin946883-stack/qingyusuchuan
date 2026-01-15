@@ -82,33 +82,10 @@ function optionalAuthenticate(req, res, next) {
   next();
 }
 
-/**
- * 管理员权限验证中间件
- * 必须在 authenticate 之后使用
- */
-function requireAdmin(req, res, next) {
-  if (!req.user) {
-    return res.status(401).json({
-      code: 401,
-      message: '未认证'
-    });
-  }
-
-  if (req.user.role !== 'admin') {
-    return res.status(403).json({
-      code: 403,
-      message: '权限不足，仅管理员可访问'
-    });
-  }
-
-  next();
-}
-
 module.exports = {
   generateToken,
   verifyToken,
   authenticate,
   optionalAuthenticate,
-  requireAuth: authenticate, // 别名
-  requireAdmin
+  requireAuth: authenticate // 别名
 };

@@ -3,7 +3,6 @@ const router = express.Router();
 const pool = require('../config/database');
 const { authenticate } = require('../middleware/auth');
 const { ORDER_PRICES } = require('./config');
-const { checkSensitiveWord, checkMultipleTexts } = require('../services/index');
 
 const ORDER_TYPES = ['sms', 'call', 'human'];
 
@@ -232,34 +231,6 @@ router.post('/create', authenticate, async (req, res, next) => {
     calculatedPrice = Math.round(calculatedPrice * 100) / 100;
     
     console.log('后端计算价格:', calculatedPrice);
-
-    // 敏感词检测
-    if (content) {
-      const checkResult = await checkSensitiveWord(content);
-      if (!checkResult.pass) {
-        return res.status(400).json({
-          code: 400,
-          message: '内容包含敏感词，请修改后重试',
-          data: {
-            sensitiveWords: checkResult.sensitiveWords || []
-          }
-        });
-      }
-    }
-
-    // 对备注也进行检测
-    if (remark) {
-      const remarkCheckResult = await checkSensitiveWord(remark);
-      if (!remarkCheckResult.pass) {
-        return res.status(400).json({
-          code: 400,
-          message: '备注包含敏感词，请修改后重试',
-          data: {
-            sensitiveWords: remarkCheckResult.sensitiveWords || []
-          }
-        });
-      }
-    }
 
     const connection = await pool.getConnection();
 

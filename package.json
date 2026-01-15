@@ -5,12 +5,22 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js"
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "server": "node server.js"
   },
-  "keywords": ["轻羽速传", "情感传递", "传话服务"],
+  "keywords": [
+    "轻羽速传",
+    "情感传递",
+    "传话服务"
+  ],
   "author": "",
   "license": "ISC",
   "engines": {
     "node": ">=14.0.0"
+  },
+  "devDependencies": {
+    "vite": "^7.3.1"
   }
 }

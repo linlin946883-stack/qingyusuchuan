@@ -1,3 +1,6 @@
+# Vite 构建输出
+dist/
+
 # Node modules
 node_modules/
 backend/node_modules/

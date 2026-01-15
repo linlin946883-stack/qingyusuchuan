@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../config/database');
-const { requireAuth, requireAdmin } = require('../middleware/auth');
+const { requireAuth } = require('../middleware/auth');
 
 // 获取预设文案列表（公开接口）
 router.get('/', async (req, res, next) => {
@@ -55,8 +55,8 @@ router.get('/', async (req, res, next) => {
   }
 });
 
-// 获取单个预设文案（管理员）
-router.get('/:id', requireAuth, requireAdmin, async (req, res, next) => {
+// 获取单个预设文案
+router.get('/:id', requireAuth, async (req, res, next) => {
   try {
     const { id } = req.params;
     const connection = await pool.getConnection();
@@ -86,8 +86,8 @@ router.get('/:id', requireAuth, requireAdmin, async (req, res, next) => {
   }
 });
 
-// 创建预设文案（管理员）
-router.post('/', requireAuth, requireAdmin, async (req, res, next) => {
+// 创建预设文案
+router.post('/', requireAuth, async (req, res, next) => {
   try {
     const { type, category, content } = req.body;
 
@@ -121,8 +121,8 @@ router.post('/', requireAuth, requireAdmin, async (req, res, next) => {
   }
 });
 
-// 更新预设文案（管理员）
-router.put('/:id', requireAuth, requireAdmin, async (req, res, next) => {
+// 更新预设文案
+router.put('/:id', requireAuth, async (req, res, next) => {
   try {
     const { id } = req.params;
     const { type, category, content } = req.body;
@@ -161,8 +161,8 @@ router.put('/:id', requireAuth, requireAdmin, async (req, res, next) => {
   }
 });
 
-// 删除预设文案（管理员）
-router.delete('/:id', requireAuth, requireAdmin, async (req, res, next) => {
+// 删除预设文案
+router.delete('/:id', requireAuth, async (req, res, next) => {
   try {
     const { id } = req.params;
     const { confirm } = req.body; // 需要前端传递 confirm: true

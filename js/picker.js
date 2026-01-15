@@ -470,3 +470,6 @@ class TimePicker {
     return `${y}-${M}-${D} ${h}:${m}:${s}`;
   }
 }
+
+// ES 模块导出
+export default TimePicker;

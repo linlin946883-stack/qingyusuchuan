@@ -1,1028 +1,909 @@
-// 管理后台 JS
+// 导入依赖
+import './config.js';
+import apiClient from './api-client.js';
+import { showToast } from './common.js';
 
-let currentPage = 'dashboard';
-let ordersCurrentPage = 1;
-let usersCurrentPage = 1;
-let currentUserId = null;
+// ==================== 全局变量 ====================
+// API 基础URL - 生产环境应该设置 window.API_BASE_URL
+const API_BASE_URL = window.API_BASE_URL || 'http://localhost:3000/api';
+let adminToken = localStorage.getItem('adminToken');
+let currentOrderPage = 1;
+let currentUserPage = 1;
+let currentOrdersData = [];
+let currentUsersData = [];
+let selectedUserId = null;
 
-// 页面初始化
-document.addEventListener('DOMContentLoaded', () => {
-    checkAdminAuth();
+// ==================== 页面初始化 ====================
+document.addEventListener('DOMContentLoaded', async () => {
+  // 初始化 API Client（获取 CSRF Token）
+  try {
+    await apiClient.init();
+  } catch (error) {
+    console.error('初始化 API Client 失败:', error);
+  }
+  
+  // 从 localStorage 重新加载 token（确保最新）
+  adminToken = localStorage.getItem('adminToken');
+  
+  if (adminToken) {
+    showMainPage();
+  } else {
+    showLoginPage();
+  }
+  
+  initEventListeners();
 });
 
-// 检查管理员权限
-async function checkAdminAuth() {
-    if (!hasToken()) {
-        showToast('请先登录');
-        setTimeout(() => {
-            window.location.href = 'login.html?return=' + encodeURIComponent(window.location.href);
-        }, 1000);
-        return;
-    }
-    
-    let userInfo = getUserInfo();
-    
-    // 如果本地没有role信息，重新刷新
-    if (!userInfo || !userInfo.role) {
-        userInfo = await refreshUserInfo();
-    }
-    
-    // 检查用户角色
-    if (!userInfo || userInfo.role !== 'admin') {
-        showToast('权限不足，仅管理员可访问');
-        setTimeout(() => {
-            window.location.href = '../index.html';
-        }, 2000);
-        return;
-    }
-    
-    if (userInfo) {
-        document.getElementById('adminName').textContent = userInfo.nickname || '管理员';
-    }
-    
-    // 验证管理员权限 - 尝试访问管理员接口
-    try {
-        const response = await fetch('http://localhost:3000/api/admin/dashboard/stats', {
-            headers: getAuthHeaders()
-        });
-        
-        if (response.status === 403) {
-            // 权限不足
-            showToast('权限不足，仅管理员可访问');
-            setTimeout(() => {
-                window.location.href = '../index.html';
-            }, 2000);
-            return;
-        }
-        
-        if (response.status === 401) {
-            // Token无效
-            showToast('登录已过期，请重新登录');
-            setTimeout(() => {
-                window.location.href = 'login.html?return=' + encodeURIComponent(window.location.href);
-            }, 1000);
-            return;
-        }
-        
-        // 权限验证通过，加载首页数据
-        const data = await response.json();
-        if (data.code === 0) {
-            loadDashboard();
-        }
-    } catch (error) {
-        console.error('权限验证失败:', error);
-        showToast('系统错误，请稍后重试');
-        setTimeout(() => {
-            window.location.href = '../index.html';
-        }, 2000);
-    }
-}
-
-// 切换页面
-function switchPage(page) {
-    // 更新导航样式
-    document.querySelectorAll('.nav-item').forEach(item => {
-        item.classList.remove('active');
+function initEventListeners() {
+  // 登录表单
+  const loginForm = document.getElementById('loginForm');
+  loginForm.addEventListener('submit', handleLogin);
+  
+  // 导航菜单
+  const navItems = document.querySelectorAll('.nav-item');
+  navItems.forEach(item => {
+    item.addEventListener('click', (e) => {
+      e.preventDefault();
+      const page = item.dataset.page;
+      switchPage(page);
+      
+      navItems.forEach(nav => nav.classList.remove('active'));
+      item.classList.add('active');
     });
-    event.currentTarget.classList.add('active');
-    
-    // 隐藏所有页面
-    document.querySelectorAll('.admin-page').forEach(p => {
-        p.style.display = 'none';
+  });
+  
+  // 退出登录
+  document.getElementById('logoutBtn').addEventListener('click', handleLogout);
+  
+  // 订单管理
+  document.getElementById('orderSearch').addEventListener('keyup', () => {
+    currentOrderPage = 1;
+    loadOrders();
+  });
+  document.getElementById('orderTypeFilter').addEventListener('change', () => {
+    currentOrderPage = 1;
+    loadOrders();
+  });
+  document.getElementById('orderStatusFilter').addEventListener('change', () => {
+    currentOrderPage = 1;
+    loadOrders();
+  });
+  
+  // 用户管理
+  document.getElementById('userSearch').addEventListener('keyup', () => {
+    currentUserPage = 1;
+    loadUsers();
+  });
+  
+  // 分页
+  document.getElementById('prevPage').addEventListener('click', () => {
+    if (currentOrderPage > 1) {
+      currentOrderPage--;
+      loadOrders();
+    }
+  });
+  document.getElementById('nextPage').addEventListener('click', () => {
+    currentOrderPage++;
+    loadOrders();
+  });
+  
+  document.getElementById('userPrevPage').addEventListener('click', () => {
+    if (currentUserPage > 1) {
+      currentUserPage--;
+      loadUsers();
+    }
+  });
+  document.getElementById('userNextPage').addEventListener('click', () => {
+    currentUserPage++;
+    loadUsers();
+  });
+  
+  // 设置页面
+  document.getElementById('savePricesBtn').addEventListener('click', savePrices);
+  document.getElementById('exportBtn').addEventListener('click', exportOrderData);
+  
+  // 模态框关闭按钮
+  document.querySelectorAll('.close-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const modal = e.target.closest('.modal');
+      if (modal) {
+        modal.classList.remove('active');
+      }
+    });
+  });
+  
+  // 点击背景关闭模态框
+  document.querySelectorAll('.modal').forEach(modal => {
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        modal.classList.remove('active');
+      }
+    });
+  });
+  
+  // 如果已登录，初始化加载仪表盘
+  if (adminToken) {
+    loadDashboardData();
+  }
+}
+
+// ==================== 登录相关 ====================
+async function handleLogin(e) {
+  e.preventDefault();
+  
+  const username = document.getElementById('username').value.trim();
+  const password = document.getElementById('password').value.trim();
+  
+  if (!username || !password) {
+    showError('loginError', '用户名和密码不能为空');
+    return;
+  }
+  
+  try {
+    const response = await fetch(`${API_BASE_URL}/admin/login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ username, password })
     });
     
-    // 显示选中页面
-    document.getElementById(`page-${page}`).style.display = 'block';
-    currentPage = page;
+    const data = await response.json();
     
-    // 加载数据
-    if (page === 'dashboard') {
-        loadDashboard();
-    } else if (page === 'orders') {
-        loadOrders();
-    } else if (page === 'users') {
-        loadUsers();
-    } else if (page === 'logs') {
-        loadLogs();
-    } else if (page === 'config') {
-        loadConfig();
-    } else if (page === 'presets') {
-        loadPresets();
+    if (data.code === 0) {
+      adminToken = data.data.token;
+      localStorage.setItem('adminToken', adminToken);
+      document.getElementById('adminName').textContent = data.data.admin.username;
+      showMainPage();
+      // 登录成功后加载仪表盘数据
+      loadDashboardData();
+    } else {
+      showError('loginError', data.message || '登录失败');
     }
-}
-
-// ==================== 数据概览 ====================
-
-async function loadDashboard() {
-    try {
-        const response = await fetch('http://localhost:3000/api/admin/dashboard/stats', {
-            headers: getAuthHeaders()
-        });
-        
-        const data = await response.json();
-        
-        if (data.code === 0) {
-            const stats = data.data;
-            
-            // 更新统计卡片
-            document.getElementById('stat-users').textContent = stats.users.total;
-            document.getElementById('stat-orders').textContent = stats.orders.total;
-            document.getElementById('stat-revenue').textContent = `¥${stats.orders.totalRevenue.toFixed(2)}`;
-            document.getElementById('stat-today').textContent = stats.today.orders;
-            
-            // 渲染订单状态图表
-            renderStatusChart(stats.orders);
-            
-            // 渲染业务类型图表
-            renderTypeChart(stats.typeDistribution);
-        } else if (response.status === 403) {
-            showToast('权限不足，仅管理员可访问');
-            setTimeout(() => {
-                window.location.href = '../index.html';
-            }, 2000);
-        }
-    } catch (error) {
-        console.error('加载统计数据失败:', error);
-        showToast('加载失败');
-    }
-}
-
-function renderStatusChart(orders) {
-    const chart = document.getElementById('order-status-chart');
-    const total = orders.total;
-    
-    chart.innerHTML = `
-        <div style="margin: 20px 0;">
-            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                <span>待处理</span>
-                <span>${orders.pending} (${(orders.pending/total*100).toFixed(1)}%)</span>
-            </div>
-            <div style="height: 8px; background: #f3f4f6; border-radius: 4px; overflow: hidden;">
-                <div style="width: ${orders.pending/total*100}%; height: 100%; background: #fbbf24;"></div>
-            </div>
-        </div>
-        <div style="margin: 20px 0;">
-            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                <span>处理中</span>
-                <span>${orders.processing} (${(orders.processing/total*100).toFixed(1)}%)</span>
-            </div>
-            <div style="height: 8px; background: #f3f4f6; border-radius: 4px; overflow: hidden;">
-                <div style="width: ${orders.processing/total*100}%; height: 100%; background: #3b82f6;"></div>
-            </div>
-        </div>
-        <div style="margin: 20px 0;">
-            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                <span>已完成</span>
-                <span>${orders.completed} (${(orders.completed/total*100).toFixed(1)}%)</span>
-            </div>
-            <div style="height: 8px; background: #f3f4f6; border-radius: 4px; overflow: hidden;">
-                <div style="width: ${orders.completed/total*100}%; height: 100%; background: #10b981;"></div>
-            </div>
-        </div>
-        <div style="margin: 20px 0;">
-            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                <span>已失败</span>
-                <span>${orders.failed} (${(orders.failed/total*100).toFixed(1)}%)</span>
-            </div>
-            <div style="height: 8px; background: #f3f4f6; border-radius: 4px; overflow: hidden;">
-                <div style="width: ${orders.failed/total*100}%; height: 100%; background: #ef4444;"></div>
-            </div>
-        </div>
-    `;
-}
-
-function renderTypeChart(types) {
-    const chart = document.getElementById('order-type-chart');
-    const typeLabels = { sms: '短信', call: '电话', human: '人工' };
-    const colors = { sms: '#3b82f6', call: '#10b981', human: '#f59e0b' };
-    
-    const total = types.reduce((sum, t) => sum + t.count, 0);
-    
-    chart.innerHTML = types.map(type => {
-        const revenue = parseFloat(type.revenue) || 0;
-        return `
-        <div style="margin: 20px 0;">
-            <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                <span>${typeLabels[type.type]}</span>
-                <span>${type.count} (¥${revenue.toFixed(2)})</span>
-            </div>
-            <div style="height: 8px; background: #f3f4f6; border-radius: 4px; overflow: hidden;">
-                <div style="width: ${type.count/total*100}%; height: 100%; background: ${colors[type.type]};"></div>
-            </div>
-        </div>
-    `}).join('');
-}
-
-// ==================== 订单管理 ====================
-
-async function loadOrders(page = 1) {
-    ordersCurrentPage = page;
-    const status = document.getElementById('filter-status').value;
-    const type = document.getElementById('filter-type').value;
-    
-    try {
-        let url = `http://localhost:3000/api/admin/orders?page=${page}&limit=20`;
-        if (status) url += `&status=${status}`;
-        if (type) url += `&type=${type}`;
-        
-        const response = await fetch(url, {
-            headers: getAuthHeaders()
-        });
-        
-        const data = await response.json();
-        
-        if (data.code === 0) {
-            renderOrdersTable(data.data.orders);
-            renderPagination('orders', data.data.pagination);
-        } else {
-            console.error('订单接口返回错误:', data);
-            showToast(data.message || '加载失败');
-        }
-    } catch (error) {
-        console.error('加载订单失败:', error);
-        showToast('加载失败');
-    }
-}
-
-function renderOrdersTable(orders) {
-    const tbody = document.getElementById('orders-tbody');
-    const typeLabels = { sms: '短信', call: '电话', human: '人工' };
-    const statusLabels = { pending: '待处理', processing: '处理中', completed: '已完成', failed: '已失败' };
-    
-    if (orders.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding: 40px;">暂无数据</td></tr>';
-        return;
-    }
-    
-    tbody.innerHTML = orders.map(order => `
-        <tr>
-            <td>#${order.id}</td>
-            <td>${order.user_phone || '-'}</td>
-            <td>${typeLabels[order.type]}</td>
-            <td><span class="status-badge status-${order.status}">${statusLabels[order.status]}</span></td>
-            <td>¥${order.price}</td>
-            <td>${order.contact_phone || '-'}</td>
-            <td>${formatDate(order.created_at)}</td>
-            <td>
-                <button class="action-btn action-btn-primary" onclick="viewOrder(${order.id})">查看</button>
-                <button class="action-btn" onclick="updateOrderStatus(${order.id}, 'completed')">完成</button>
-                <button class="action-btn action-btn-danger" onclick="deleteOrder(${order.id})">删除</button>
-            </td>
-        </tr>
-    `).join('');
-}
-
-async function viewOrder(id) {
-    try {
-        const response = await fetch(`http://localhost:3000/api/admin/orders/${id}`, {
-            headers: getAuthHeaders()
-        });
-        
-        const data = await response.json();
-        
-        if (data.code === 0) {
-            const order = data.data;
-            console.log('订单数据:', order);
-            const modal = document.getElementById('order-modal');
-            const body = document.getElementById('order-modal-body');
-            
-            body.innerHTML = `
-                <div class="form-group">
-                    <label>订单ID</label>
-                    <input type="text" value="#${order.id}" readonly>
-                </div>
-                <div class="form-group">
-                    <label>订单状态</label>
-                    <select id="order-status-edit">
-                        <option value="pending" ${order.status === 'pending' ? 'selected' : ''}>待处理</option>
-                        <option value="processing" ${order.status === 'processing' ? 'selected' : ''}>处理中</option>
-                        <option value="completed" ${order.status === 'completed' ? 'selected' : ''}>已完成</option>
-                        <option value="failed" ${order.status === 'failed' ? 'selected' : ''}>已失败</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>虚拟号码</label>
-                    <input type="text" id="order-virtual-number" value="${order.virtual_number || ''}" placeholder="分配虚拟号码">
-                </div>
-                <div class="form-group">
-                    <label>联系方式</label>
-                    <input type="text" value="${order.contact_phone || ''}" readonly>
-                </div>
-                <div class="form-group">
-                    <label>服务内容</label>
-                    <textarea readonly style="width:100%; min-height: 100px; padding: 10px; border: 1px solid #e5e7eb; border-radius: 8px;">${order.content || ''}</textarea>
-                </div>
-                <div class="form-group">
-                    <label>备注</label>
-                    <input type="text" id="order-remark-edit" value="${order.remark || ''}" placeholder="添加备注">
-                </div>
-                <button class="btn-primary" onclick="saveOrderChanges(${order.id})" style="width: 100%; margin-top: 12px;">保存更改</button>
-            `;
-            
-            console.log('模态框内容已设置');
-            modal.classList.add('show');
-            console.log('模态框已显示');
-        } else {
-            console.error('查看订单失败:', data);
-            showToast(data.message || '加载失败');
-        }
-    } catch (error) {
-        console.error('查看订单失败:', error);
-        showToast('加载失败');
-    }
-}
-
-async function saveOrderChanges(id) {
-    const status = document.getElementById('order-status-edit').value;
-    const virtualNumber = document.getElementById('order-virtual-number').value;
-    const remark = document.getElementById('order-remark-edit').value;
-    
-    try {
-        const response = await fetch(`http://localhost:3000/api/admin/orders/${id}`, {
-            method: 'PATCH',
-            headers: getAuthHeaders(),
-            body: JSON.stringify({ status, virtual_number: virtualNumber, remark })
-        });
-        
-        const data = await response.json();
-        
-        if (data.code === 0) {
-            showToast('更新成功');
-            closeOrderModal();
-            loadOrders(ordersCurrentPage);
-        } else {
-            showToast(data.message || '更新失败');
-        }
-    } catch (error) {
-        console.error('更新订单失败:', error);
-        showToast('更新失败');
-    }
-}
-
-async function updateOrderStatus(id, status) {
-    if (!confirm(`确认将订单状态改为"${status}"吗？`)) return;
-    
-    try {
-        const response = await fetch(`http://localhost:3000/api/admin/orders/${id}`, {
-            method: 'PATCH',
-            headers: getAuthHeaders(),
-            body: JSON.stringify({ status })
-        });
-        
-        const data = await response.json();
-        
-        if (data.code === 0) {
-            showToast('更新成功');
-            loadOrders(ordersCurrentPage);
-        } else {
-            console.error('更新订单状态失败:', data);
-            showToast(data.message || '更新失败');
-        }
-    } catch (error) {
-        console.error('更新失败:', error);
-        showToast('更新失败');
-    }
-}
-
-async function deleteOrder(id) {
-    // 第一次确认
-    if (!confirm('⚠️ 警告：确认删除此订单吗？\n\n删除后数据将无法恢复！')) return;
-    
-    // 第二次确认（更明确的提示）
-    const confirmText = prompt('为确保安全，请输入 "DELETE" 来确认删除操作：');
-    if (confirmText !== 'DELETE') {
-        showToast('删除操作已取消');
-        return;
-    }
-    
-    try {
-        const response = await fetch(`http://localhost:3000/api/admin/orders/${id}`, {
-            method: 'DELETE',
-            headers: {
-                ...getAuthHeaders(),
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ confirm: true }) // 后端需要的确认参数
-        });
-        
-        const data = await response.json();
-        
-        if (data.code === 0) {
-            showToast('删除成功');
-            loadOrders(ordersCurrentPage);
-        } else {
-            showToast(data.message || '删除失败');
-        }
-    } catch (error) {
-        console.error('删除失败:', error);
-        showToast('删除失败，请重试');
-    }
-}
-
-function closeOrderModal() {
-    document.getElementById('order-modal').classList.remove('show');
-}
-
-// ==================== 用户管理 ====================
-
-async function loadUsers(page = 1) {
-    usersCurrentPage = page;
-    const search = document.getElementById('search-user').value;
-    
-    try {
-        let url = `http://localhost:3000/api/admin/users?page=${page}&limit=20`;
-        if (search) url += `&search=${encodeURIComponent(search)}`;
-        
-        const response = await fetch(url, {
-            headers: getAuthHeaders()
-        });
-        
-        const data = await response.json();
-        
-        if (data.code === 0) {
-            renderUsersTable(data.data.users);
-            renderPagination('users', data.data.pagination);
-        }
-    } catch (error) {
-        console.error('加载用户失败:', error);
-        showToast('加载失败');
-    }
-}
-
-function renderUsersTable(users) {
-    const tbody = document.getElementById('users-tbody');
-    
-    if (users.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 40px;">暂无数据</td></tr>';
-        return;
-    }
-    
-    // 获取当前登录用户ID
-    const currentUserId = JSON.parse(localStorage.getItem('userInfo'))?.id;
-    
-    tbody.innerHTML = users.map(user => {
-        const balance = parseFloat(user.balance) || 0;
-        const isSuperAdmin = user.is_super_admin === 1;
-        const isCurrentUser = user.id === currentUserId;
-        const canModify = !isSuperAdmin && !isCurrentUser;
-        
-        let roleLabel = user.role === 'admin' ? '管理员' : '用户';
-        if (isSuperAdmin) roleLabel = '超级管理员';
-        
-        return `
-        <tr>
-            <td>#${user.id}</td>
-            <td>${user.phone || '-'}</td>
-            <td>${user.nickname || '-'}</td>
-            <td>¥${balance.toFixed(2)}</td>
-            <td>${roleLabel}</td>
-            <td>${formatDate(user.created_at)}</td>
-            <td style="text-align: left;">
-                ${canModify ? `<button class="action-btn ${user.role === 'admin' ? 'action-btn-danger' : 'action-btn-primary'}" onclick="toggleRole(${user.id}, '${user.role}')">${user.role === 'admin' ? '取消管理员' : '设为管理员'}</button>` : '<span style="color: #9ca3af; font-size: 12px;">不可操作</span>'}
-            </td>
-        </tr>
-    `}).join('');
-}
-
-
-
-async function toggleRole(userId, currentRole) {
-    const newRole = currentRole === 'admin' ? 'user' : 'admin';
-    const action = newRole === 'admin' ? '设为管理员' : '取消管理员权限';
-    
-    if (!confirm(`确认${action}吗？`)) return;
-    
-    try {
-        const response = await fetch(`http://localhost:3000/api/admin/users/${userId}/role`, {
-            method: 'PATCH',
-            headers: getAuthHeaders(),
-            body: JSON.stringify({ role: newRole })
-        });
-        
-        const data = await response.json();
-        
-        if (data.code === 0) {
-            showToast('角色更新成功');
-            loadUsers(usersCurrentPage);
-        } else {
-            showToast(data.message || '更新失败');
-        }
-    } catch (error) {
-        console.error('更新角色失败:', error);
-        showToast('更新失败');
-    }
-}
-
-function handleSearchUser(event) {
-    if (event.key === 'Enter') {
-        loadUsers(1);
-    }
-}
-
-// ==================== 系统配置 ====================
-
-async function loadConfig() {
-    try {
-        const prices = await getPrices();
-        document.getElementById('price-sms').value = prices.sms;
-        document.getElementById('price-call').value = prices.call;
-        document.getElementById('price-human').value = prices.human;
-    } catch (error) {
-        console.error('加载配置失败:', error);
-    }
-}
-
-function savePrices() {
-    const sms = document.getElementById('price-sms').value;
-    const call = document.getElementById('price-call').value;
-    const human = document.getElementById('price-human').value;
-    
-    showToast('请手动编辑 backend/routes/config.js 文件并重启服务器');
-    
-    console.log('新价格配置:', { sms, call, human });
-}
-
-// ==================== 分页 ====================
-
-function renderPagination(type, pagination) {
-    const container = document.getElementById(`${type}-pagination`);
-    const totalPages = Math.ceil(pagination.total / pagination.limit);
-    
-    let html = '';
-    
-    // 上一页
-    html += `<button ${pagination.page === 1 ? 'disabled' : ''} onclick="load${type.charAt(0).toUpperCase() + type.slice(1)}(${pagination.page - 1})">上一页</button>`;
-    
-    // 页码
-    for (let i = 1; i <= Math.min(totalPages, 10); i++) {
-        html += `<button class="${i === pagination.page ? 'active' : ''}" onclick="load${type.charAt(0).toUpperCase() + type.slice(1)}(${i})">${i}</button>`;
-    }
-    
-    // 下一页
-    html += `<button ${pagination.page === totalPages ? 'disabled' : ''} onclick="load${type.charAt(0).toUpperCase() + type.slice(1)}(${pagination.page + 1})">下一页</button>`;
-    
-    container.innerHTML = html;
-}
-
-// ==================== 访问日志 ====================
-
-let logsCurrentPage = 1;
-
-async function loadLogs(page = 1) {
-    logsCurrentPage = page;
-    const days = document.getElementById('filter-days')?.value || '7';
-    const userId = document.getElementById('filter-admin')?.value || '';
-
-    try {
-        let url = `http://localhost:3000/api/admin/logs/access?page=${page}&limit=50&days=${days}`;
-        if (userId) url += `&user_id=${userId}`;
-
-        const response = await fetch(url, {
-            headers: getAuthHeaders()
-        });
-
-        const data = await response.json();
-
-        if (data.code === 0) {
-            renderLogsTable(data.data.logs);
-            renderPagination('logs', data.data.pagination);
-            loadLogsStats();
-        } else {
-            console.error('加载日志失败:', data);
-            showToast(data.message || '加载失败');
-        }
-    } catch (error) {
-        console.error('加载日志失败:', error);
-        showToast('加载失败');
-    }
-}
-
-function renderLogsTable(logs) {
-    const tbody = document.getElementById('logs-tbody');
-
-    if (logs.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 40px;">暂无日志</td></tr>';
-        return;
-    }
-
-    tbody.innerHTML = logs.map(log => `
-        <tr>
-            <td>${formatDate(log.created_at)}</td>
-            <td>${log.user_nickname || '-'}</td>
-            <td>${log.user_phone || '-'}</td>
-            <td style="font-family: monospace; font-size: 12px; color: #6b7280;">${log.endpoint}</td>
-            <td><span class="method-badge method-${log.method}">${log.method}</span></td>
-            <td><span class="status-badge status-${log.status_code >= 400 ? 'error' : 'success'}">${log.status_code}</span></td>
-            <td>${log.ip_address}</td>
-        </tr>
-    `).join('');
-}
-
-async function loadLogsStats() {
-    try {
-        const response = await fetch('http://localhost:3000/api/admin/logs/stats', {
-            headers: getAuthHeaders()
-        });
-
-        const data = await response.json();
-
-        if (data.code === 0) {
-            const stats = data.data;
-            
-            // 计算总访问次数
-            const totalAccess = stats.adminStats.reduce((sum, s) => sum + s.access_count, 0);
-            document.getElementById('stat-total-access').textContent = totalAccess;
-            
-            // 活跃管理员数
-            document.getElementById('stat-active-admins').textContent = stats.adminStats.length;
-            
-            // 最高访问端点
-            if (stats.endpointStats.length > 0) {
-                const topEndpoint = stats.endpointStats[0].endpoint;
-                document.getElementById('stat-top-endpoint').textContent = topEndpoint.substring(0, 30);
-            }
-
-            // 填充管理员下拉框
-            const adminSelect = document.getElementById('filter-admin');
-            const currentValue = adminSelect.value;
-            adminSelect.innerHTML = '<option value="">全部管理员</option>';
-            stats.adminStats.forEach(admin => {
-                const option = document.createElement('option');
-                option.value = admin.user_id;
-                option.textContent = `${admin.user_nickname || '未知'} (${admin.user_phone || '-'})`;
-                adminSelect.appendChild(option);
-            });
-            adminSelect.value = currentValue;
-        }
-    } catch (error) {
-        console.error('加载日志统计失败:', error);
-    }
-}
-
-function exportLogs() {
-    const days = document.getElementById('filter-days')?.value || '7';
-    const logs = Array.from(document.querySelectorAll('#logs-tbody tr')).map(row => {
-        const cells = row.querySelectorAll('td');
-        return {
-            时间: cells[0]?.textContent || '',
-            管理员: cells[1]?.textContent || '',
-            手机号: cells[2]?.textContent || '',
-            操作: cells[3]?.textContent || '',
-            方法: cells[4]?.textContent || '',
-            状态: cells[5]?.textContent || '',
-            'IP地址': cells[6]?.textContent || ''
-        };
-    });
-
-    if (logs.length === 0) {
-        showToast('没有日志可导出');
-        return;
-    }
-
-    // 转换为 CSV
-    const headers = Object.keys(logs[0]);
-    const csvContent = [
-        headers.join(','),
-        ...logs.map(log => headers.map(h => `"${log[h] || ''}"`).join(','))
-    ].join('\n');
-
-    // 创建下载链接
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', `admin-logs-${new Date().toISOString().split('T')[0]}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    showToast('日志已导出');
-}
-
-// 清理旧日志
-async function cleanupLogs() {
-    const days = prompt('请输入要保留的天数（最少7天）:', '30');
-    
-    if (!days) return;
-    
-    const daysNum = parseInt(days);
-    if (isNaN(daysNum) || daysNum < 7) {
-        showToast('保留天数必须是数字且不能少于7天');
-        return;
-    }
-    
-    if (!confirm(`确认删除 ${daysNum} 天之前的日志吗？此操作不可恢复！`)) {
-        return;
-    }
-    
-    try {
-        const response = await fetch('http://localhost:3000/api/admin/logs/cleanup', {
-            method: 'DELETE',
-            headers: {
-                ...getAuthHeaders(),
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ days: daysNum })
-        });
-        
-        const result = await response.json();
-        
-        if (result.code === 0) {
-            showToast(`成功清理 ${result.data.deletedCount} 条日志`);
-            loadLogs(1); // 重新加载日志列表
-        } else {
-            showToast(result.message || '清理失败');
-        }
-    } catch (error) {
-        console.error('清理日志失败:', error);
-        showToast('清理失败，请重试');
-    }
-}
-
-// ==================== 工具函数 ====================
-
-function formatDate(dateStr) {
-    const date = new Date(dateStr);
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const hour = String(date.getHours()).padStart(2, '0');
-    const minute = String(date.getMinutes()).padStart(2, '0');
-    return `${month}-${day} ${hour}:${minute}`;
+  } catch (err) {
+    console.error('登录出错:', err);
+    showError('loginError', '网络错误，请稍后重试');
+  }
 }
 
 function handleLogout() {
-    if (confirm('确认退出管理后台吗？')) {
-        userLogout();
-        window.location.href = '../index.html';
-    }
+  if (confirm('确定要退出登录吗？')) {
+    localStorage.removeItem('adminToken');
+    adminToken = null;
+    document.getElementById('loginForm').reset();
+    showLoginPage();
+  }
 }
 
-// ==================== 预设文案管理 ====================
+function showLoginPage() {
+  document.getElementById('loginPage').classList.add('active');
+  document.getElementById('mainPage').classList.remove('active');
+}
 
-let currentPresetId = null;
-let allCategories = ['复合', '告别', '表白', '祝福'];
+function showMainPage() {
+  document.getElementById('loginPage').classList.remove('active');
+  document.getElementById('mainPage').classList.add('active');
+  // 默认切换到仪表盘页面
+  switchPage('dashboard');
+}
 
-// 加载预设文案
-async function loadPresets() {
-    const type = 'sms';
-    const category = document.getElementById('preset-category-filter').value;
-    const container = document.getElementById('presets-grid');
+// ==================== 页面切换 ====================
+function switchPage(page) {
+  const pages = document.querySelectorAll('.content-page');
+  pages.forEach(p => p.classList.remove('active'));
+  
+  const targetPage = document.getElementById(page + 'Page');
+  if (targetPage) {
+    targetPage.classList.add('active');
     
-    try {
-        let url = `http://localhost:3000/api/presets?type=${type}`;
-        if (category) {
-            url += `&category=${encodeURIComponent(category)}`;
-        }
-        
-        const response = await fetch(url);
-        const result = await response.json();
-        
-        if (result.code === 0 && result.data) {
-            container.innerHTML = '';
-            
-            let hasData = false;
-            result.data.forEach(group => {
-                group.items.forEach(item => {
-                    hasData = true;
-                    const card = createPresetCard({
-                        id: item.id,
-                        type: type,
-                        category: group.category,
-                        title: item.title,
-                        content: item.content
-                    });
-                    container.appendChild(card);
-                });
-            });
-            
-            if (!hasData) {
-                container.innerHTML = `
-                    <div class="empty-state">
-                        <div class="empty-state-icon">📝</div>
-                        <div class="empty-state-text">暂无文案数据</div>
-                    </div>
-                `;
-            }
-        } else {
-            container.innerHTML = `
-                <div class="empty-state">
-                    <div class="empty-state-icon">❌</div>
-                    <div class="empty-state-text">加载失败</div>
-                </div>
-            `;
-        }
-    } catch (error) {
-        console.error('加载预设文案失败:', error);
-        container.innerHTML = `
-            <div class="empty-state">
-                <div class="empty-state-icon">❌</div>
-                <div class="empty-state-text">加载失败，请重试</div>
+    // 触发数据加载
+    if (page === 'dashboard') {
+      loadDashboardData();
+    } else if (page === 'orders') {
+      currentOrderPage = 1;
+      loadOrders();
+    } else if (page === 'users') {
+      currentUserPage = 1;
+      loadUsers();
+    }
+  }
+}
+
+// ==================== 仪表盘数据 ====================
+async function loadDashboardData() {
+  try {
+    if (!adminToken) {
+      console.error('未找到管理员token，请重新登录');
+      handleLogout();
+      return;
+    }
+    
+    const response = await fetch(`${API_BASE_URL}/admin/dashboard`, {
+      headers: getAuthHeaders()
+    });
+    
+    const data = await response.json();
+    
+    if (response.status === 401) {
+      console.error('Token无效或已过期，请重新登录');
+      alert('登录已过期，请重新登录');
+      handleLogout();
+      return;
+    }
+    
+    if (data.code === 0) {
+      const summary = data.data.summary;
+      
+      // 确保数值类型正确
+      const totalRevenue = parseFloat(summary.total_revenue) || 0;
+      const dailyRevenue = parseFloat(summary.daily_revenue) || 0;
+      const totalOrders = parseInt(summary.total_orders) || 0;
+      
+      document.getElementById('totalUsers').textContent = summary.total_users || 0;
+      document.getElementById('newUsers').textContent = summary.new_users || 0;
+      document.getElementById('totalOrders').textContent = totalOrders;
+      document.getElementById('newOrders').textContent = summary.new_orders || 0;
+      document.getElementById('totalRevenue').textContent = `¥${totalRevenue.toFixed(2)}`;
+      document.getElementById('dailyRevenue').textContent = `¥${dailyRevenue.toFixed(2)}`;
+      
+      // 计算平均客单价
+      const avgValue = totalOrders > 0 
+        ? (totalRevenue / totalOrders).toFixed(2)
+        : '0.00';
+      document.getElementById('avgOrderValue').textContent = `¥${avgValue}`;
+      
+      // 渲染图表
+      renderTypeChart(data.data.order_type_distribution || {});
+      renderStatusChart(data.data.order_status_distribution || {});
+      renderTrendTable(data.data.order_trend || []);
+    }
+  } catch (err) {
+    console.error('加载仪表盘数据出错:', err);
+  }
+}
+
+function renderTypeChart(data) {
+  if (!data || Object.keys(data).length === 0) {
+    document.getElementById('typeChart').innerHTML = '<div style="text-align: center; color: #999; padding: 40px;">暂无数据</div>';
+    return;
+  }
+  
+  const chartHtml = `
+    <div style="display: flex; flex-direction: column; gap: 12px;">
+      ${Object.entries(data).map(([type, count]) => {
+        const typeLabels = { sms: '传话短信', call: '和解电话', human: '人工传话' };
+        const safeCount = parseInt(count) || 0;
+        return `
+          <div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+              <span>${typeLabels[type] || type}</span>
+              <span style="font-weight: 600;">${safeCount}</span>
             </div>
+            <div style="height: 24px; background-color: #f3f4f6; border-radius: 4px; overflow: hidden;">
+              <div style="height: 100%; background-color: #667eea; width: ${Math.min(safeCount * 10, 100)}%; transition: width 0.3s;"></div>
+            </div>
+          </div>
         `;
-    }
+      }).join('')}
+    </div>
+  `;
+  document.getElementById('typeChart').innerHTML = chartHtml;
 }
 
-// 创建预设文案卡片
-function createPresetCard(preset) {
-    const card = document.createElement('div');
-    card.className = 'preset-card';
-    
-    card.innerHTML = `
-        <div class="preset-card-header">
-            <div>
-                <span class="preset-card-category">${preset.category}</span>
+function renderStatusChart(data) {
+  if (!data || Object.keys(data).length === 0) {
+    document.getElementById('statusChart').innerHTML = '<div style="text-align: center; color: #999; padding: 40px;">暂无数据</div>';
+    return;
+  }
+  
+  const chartHtml = `
+    <div style="display: flex; flex-direction: column; gap: 12px;">
+      ${Object.entries(data).map(([status, count]) => {
+        const statusLabels = { 
+          pending: '待处理', 
+          processing: '处理中', 
+          completed: '已完成', 
+          failed: '已失败' 
+        };
+        const colors = {
+          pending: '#fbbf24',
+          processing: '#60a5fa',
+          completed: '#34d399',
+          failed: '#f87171'
+        };
+        const safeCount = parseInt(count) || 0;
+        return `
+          <div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+              <span>${statusLabels[status] || status}</span>
+              <span style="font-weight: 600;">${safeCount}</span>
             </div>
-        </div>
-        <div class="preset-card-content">${preset.content}</div>
-        <div class="preset-card-actions">
-            <button class="btn-edit-preset" onclick="editPreset(${preset.id})">✏️ 编辑</button>
-            <button class="btn-delete-preset" onclick="deletePreset(${preset.id})">🗑️ 删除</button>
-        </div>
+            <div style="height: 24px; background-color: #f3f4f6; border-radius: 4px; overflow: hidden;">
+              <div style="height: 100%; background-color: ${colors[status]}; width: ${Math.min(safeCount * 10, 100)}%; transition: width 0.3s;"></div>
+            </div>
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `;
+  document.getElementById('statusChart').innerHTML = chartHtml;
+}
+
+function renderTrendTable(data) {
+  const tbody = document.getElementById('trendTableBody');
+  if (!data || data.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="2" style="text-align: center; color: #999; padding: 20px;">暂无数据</td></tr>';
+    return;
+  }
+  
+  tbody.innerHTML = data.map(item => {
+    // 格式化日期为中文格式
+    const date = new Date(item.date);
+    const month = date.getMonth() + 1;
+    const day = date.getDate();
+    const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+    const weekday = weekdays[date.getDay()];
+    const formattedDate = `${month}月${day}日 ${weekday}`;
+    
+    return `
+      <tr>
+        <td>${formattedDate}</td>
+        <td><strong>${item.count}</strong></td>
+      </tr>
     `;
-    
-    return card;
+  }).join('');
 }
 
-// 显示添加文案模态框
-function showAddPresetModal() {
-    currentPresetId = null;
-    document.getElementById('preset-modal-title').textContent = '添加文案';
-    document.getElementById('preset-type').value = 'sms';
-    document.getElementById('preset-category').value = '';
-    document.getElementById('preset-content').value = '';
+// ==================== 订单管理 ====================
+async function loadOrders() {
+  try {
+    const searchValue = document.getElementById('orderSearch').value.trim();
+    const typeFilter = document.getElementById('orderTypeFilter').value;
+    const statusFilter = document.getElementById('orderStatusFilter').value;
     
-    // 更新分类选项
-    updateCategoryOptions();
+    let query = `?page=${currentOrderPage}&pageSize=20`;
+    if (typeFilter) query += `&type=${typeFilter}`;
+    if (statusFilter) query += `&status=${statusFilter}`;
     
-    document.getElementById('preset-modal').style.display = 'flex';
-}
-
-// 编辑文案
-async function editPreset(id) {
-    currentPresetId = id;
-    
-    try {
-        const response = await fetch(`http://localhost:3000/api/presets/${id}`, {
-            headers: getAuthHeaders()
-        });
-        
-        const result = await response.json();
-        
-        if (result.code === 0 && result.data) {
-            const preset = result.data;
-            document.getElementById('preset-modal-title').textContent = '编辑文案';
-            document.getElementById('preset-type').value = preset.type;
-            document.getElementById('preset-category').value = preset.category;
-            document.getElementById('preset-content').value = preset.content;
-            
-            updateCategoryOptions();
-            
-            document.getElementById('preset-modal').style.display = 'flex';
-        } else {
-            showToast('加载文案失败');
-        }
-    } catch (error) {
-        console.error('加载文案失败:', error);
-        showToast('加载文案失败，请重试');
-    }
-}
-
-// 保存文案
-async function savePreset() {
-    const type = document.getElementById('preset-type').value;
-    const category = document.getElementById('preset-category').value;
-    const content = document.getElementById('preset-content').value;
-    
-    if (!category || !content) {
-        showToast('请填写完整信息');
-        return;
-    }
-    
-    try {
-        let url, method;
-        if (currentPresetId) {
-            url = `http://localhost:3000/api/presets/${currentPresetId}`;
-            method = 'PUT';
-        } else {
-            url = 'http://localhost:3000/api/presets';
-            method = 'POST';
-        }
-        
-        const response = await fetch(url, {
-            method: method,
-            headers: {
-                ...getAuthHeaders(),
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ type, category, content })
-        });
-        
-        const result = await response.json();
-        
-        if (result.code === 0) {
-            showToast(currentPresetId ? '更新成功' : '添加成功');
-            closePresetModal();
-            loadPresets();
-        } else {
-            showToast(result.message || '操作失败');
-        }
-    } catch (error) {
-        console.error('保存文案失败:', error);
-        showToast('操作失败，请重试');
-    }
-}
-
-// 删除文案
-async function deletePreset(id) {
-    if (!confirm('⚠️ 确定要删除这条文案吗？删除后无法恢复！')) {
-        return;
-    }
-    
-    try {
-        const response = await fetch(`http://localhost:3000/api/presets/${id}`, {
-            method: 'DELETE',
-            headers: {
-                ...getAuthHeaders(),
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ confirm: true }) // 后端需要的确认参数
-        });
-        
-        const result = await response.json();
-        
-        if (result.code === 0) {
-            showToast('删除成功');
-            loadPresets();
-        } else {
-            showToast(result.message || '删除失败');
-        }
-    } catch (error) {
-        console.error('删除文案失败:', error);
-        showToast('删除失败，请重试');
-    }
-}
-
-// 关闭文案模态框
-function closePresetModal() {
-    document.getElementById('preset-modal').style.display = 'none';
-    currentPresetId = null;
-}
-
-// 显示添加分类模态框
-function showAddCategoryModal() {
-    document.getElementById('new-category-name').value = '';
-    document.getElementById('category-modal').style.display = 'flex';
-}
-
-// 添加新分类
-function addCategory() {
-    const categoryName = document.getElementById('new-category-name').value.trim();
-    
-    if (!categoryName) {
-        showToast('请输入分类名称');
-        return;
-    }
-    
-    if (allCategories.includes(categoryName)) {
-        showToast('该分类已存在');
-        return;
-    }
-    
-    allCategories.push(categoryName);
-    updateCategoryOptions();
-    closeCategoryModal();
-    showToast('分类添加成功');
-}
-
-// 更新分类选项
-function updateCategoryOptions() {
-    const select = document.getElementById('preset-category');
-    const filter = document.getElementById('preset-category-filter');
-    
-    // 更新编辑框中的分类选项
-    select.innerHTML = '';
-    allCategories.forEach(cat => {
-        const option = document.createElement('option');
-        option.value = cat;
-        option.textContent = cat;
-        select.appendChild(option);
+    const response = await fetch(`${API_BASE_URL}/admin/orders${query}`, {
+      headers: getAuthHeaders()
     });
     
-    // 更新筛选器中的分类选项
-    const currentFilterValue = filter.value;
-    filter.innerHTML = '<option value="">全部分类</option>';
-    allCategories.forEach(cat => {
-        const option = document.createElement('option');
-        option.value = cat;
-        option.textContent = cat;
-        filter.appendChild(option);
+    const data = await response.json();
+    
+    if (data.code === 0) {
+      currentOrdersData = data.data.orders;
+      renderOrdersTable(data.data.orders);
+      updatePagination(
+        data.data.pagination,
+        'ordersPagination',
+        'pageInfo',
+        'prevPage',
+        'nextPage'
+      );
+    }
+  } catch (err) {
+    console.error('加载订单出错:', err);
+  }
+}
+
+function renderOrdersTable(orders) {
+  const tbody = document.getElementById('ordersTableBody');
+  
+  if (orders.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 40px; color: #999;">暂无订单</td></tr>';
+    return;
+  }
+  
+  tbody.innerHTML = orders.map(order => {
+    const price = parseFloat(order.price) || 0;
+    return `
+      <tr>
+        <td><strong>#${order.id}</strong></td>
+        <td>${order.user_id}</td>
+        <td>${getTypeLabel(order.type)}</td>
+        <td>${order.contact_phone || '-'}</td>
+        <td>¥${price.toFixed(2)}</td>
+        <td><span class="status-badge status-${order.status}">${getStatusLabel(order.status)}</span></td>
+        <td>${formatDate(order.created_at)}</td>
+        <td>
+          <div class="action-buttons">
+            <button class="action-btn" onclick="showOrderDetail(${order.id})">详情</button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+async function showOrderDetail(orderId) {
+  try {
+    const response = await fetch(`${API_BASE_URL}/admin/orders/${orderId}`, {
+      headers: getAuthHeaders()
     });
-    filter.value = currentFilterValue;
+    
+    const data = await response.json();
+    
+    if (data.code === 0) {
+      const order = data.data;
+      const body = document.getElementById('orderDetailBody');
+      const price = parseFloat(order.price) || 0;
+      
+      body.innerHTML = `
+        <div style="display: grid; gap: 16px;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+            <div>
+              <div style="color: #999; font-size: 12px; margin-bottom: 4px;">订单ID</div>
+              <div style="font-weight: 600; font-size: 16px;">#${order.id}</div>
+            </div>
+            <div>
+              <div style="color: #999; font-size: 12px; margin-bottom: 4px;">用户ID</div>
+              <div style="font-weight: 600;">${order.user_id}</div>
+            </div>
+            <div>
+              <div style="color: #999; font-size: 12px; margin-bottom: 4px;">订单类型</div>
+              <div style="font-weight: 600;">${getTypeLabel(order.type)}</div>
+            </div>
+            <div>
+              <div style="color: #999; font-size: 12px; margin-bottom: 4px;">订单状态</div>
+              <div><span class="status-badge status-${order.status}">${getStatusLabel(order.status)}</span></div>
+            </div>
+            <div>
+              <div style="color: #999; font-size: 12px; margin-bottom: 4px;">订单金额</div>
+              <div style="font-weight: 600; color: #ef4444; font-size: 18px;">¥${price.toFixed(2)}</div>
+            </div>
+            <div>
+              <div style="color: #999; font-size: 12px; margin-bottom: 4px;">联系电话</div>
+              <div style="font-weight: 600;">${order.contact_phone || '-'}</div>
+            </div>
+          </div>
+          <div>
+            <div style="color: #999; font-size: 12px; margin-bottom: 4px;">联系方式</div>
+            <div style="font-weight: 600;">${order.contact_method || '-'}</div>
+          </div>
+          <div>
+            <div style="color: #999; font-size: 12px; margin-bottom: 4px;">服务内容</div>
+            <div style="background-color: #f9fafb; padding: 12px; border-radius: 6px; line-height: 1.6; word-break: break-all;">
+              ${order.content || '（无内容）'}
+            </div>
+          </div>
+          ${order.scheduled_time ? `
+            <div>
+              <div style="color: #999; font-size: 12px; margin-bottom: 4px;">计划时间</div>
+              <div style="font-weight: 600;">${formatDateTime(order.scheduled_time)}</div>
+            </div>
+          ` : ''}
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+            <div>
+              <div style="color: #999; font-size: 12px; margin-bottom: 4px;">创建时间</div>
+              <div>${formatDateTime(order.created_at)}</div>
+            </div>
+            <div>
+              <div style="color: #999; font-size: 12px; margin-bottom: 4px;">更新时间</div>
+              <div>${formatDateTime(order.updated_at)}</div>
+            </div>
+          </div>
+          ${order.remark ? `
+            <div>
+              <div style="color: #999; font-size: 12px; margin-bottom: 4px;">备注</div>
+              <div style="background-color: #f9fafb; padding: 12px; border-radius: 6px;">
+                ${order.remark}
+              </div>
+            </div>
+          ` : ''}
+        </div>
+      `;
+      
+      // 渲染操作按钮
+      const actions = document.getElementById('orderActions');
+      if (order.status !== 'completed' && order.status !== 'failed') {
+        actions.innerHTML = `
+          <select id="newStatus" class="form-control" style="flex: 1; margin-right: 12px;">
+            <option value="">选择新状态</option>
+            <option value="processing">处理中</option>
+            <option value="completed">已完成</option>
+            <option value="failed">已失败</option>
+          </select>
+          <button class="btn btn-primary" onclick="updateOrderStatus(${orderId})">更新状态</button>
+        `;
+      } else {
+        actions.innerHTML = '<span style="color: #999;">该订单已终止，无法修改状态</span>';
+      }
+      
+      document.getElementById('orderDetailModal').classList.add('active');
+    }
+  } catch (err) {
+    console.error('加载订单详情出错:', err);
+  }
 }
 
-// 关闭分类模态框
-function closeCategoryModal() {
-    document.getElementById('category-modal').style.display = 'none';
+async function updateOrderStatus(orderId) {
+  const status = document.getElementById('newStatus').value;
+  if (!status) {
+    alert('请选择新状态');
+    return;
+  }
+  
+  try {
+    const response = await fetch(`${API_BASE_URL}/admin/orders/${orderId}/status`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ status })
+    });
+    
+    const data = await response.json();
+    
+    if (data.code === 0) {
+      closeModal('orderDetailModal');
+      loadOrders();
+    } else {
+      alert(data.message || '更新失败');
+    }
+  } catch (err) {
+    console.error('更新订单状态出错:', err);
+    alert('网络错误');
+  }
 }
 
+// ==================== 用户管理 ====================
+async function loadUsers() {
+  try {
+    const searchValue = document.getElementById('userSearch').value.trim();
+    let query = `?page=${currentUserPage}&pageSize=20`;
+    if (searchValue) {
+      // 检查是否是电话号码
+      if (/^\d+$/.test(searchValue)) {
+        query += `&phone=${searchValue}`;
+      } else {
+        query += `&nickname=${searchValue}`;
+      }
+    }
+    
+    const response = await fetch(`${API_BASE_URL}/admin/users${query}`, {
+      headers: getAuthHeaders()
+    });
+    
+    const data = await response.json();
+    
+    if (data.code === 0) {
+      currentUsersData = data.data.users;
+      renderUsersTable(data.data.users);
+      updatePagination(
+        data.data.pagination,
+        'usersPagination',
+        'userPageInfo',
+        'userPrevPage',
+        'userNextPage'
+      );
+    }
+  } catch (err) {
+    console.error('加载用户出错:', err);
+  }
+}
+
+function renderUsersTable(users) {
+  const tbody = document.getElementById('usersTableBody');
+  
+  if (users.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 40px; color: #999;">暂无用户</td></tr>';
+    return;
+  }
+  
+  tbody.innerHTML = users.map(user => {
+    const totalSpent = parseFloat(user.total_spent) || 0;
+    return `
+      <tr>
+        <td><strong>#${user.id}</strong></td>
+        <td>${user.phone || '-'}</td>
+        <td>${user.nickname || '未设置'}</td>
+        <td>¥${totalSpent.toFixed(2)}</td>
+        <td>${formatDate(user.created_at)}</td>
+        <td>
+          <div class="action-buttons">
+            <button class="action-btn" onclick="showUserDetail(${user.id})">详情</button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+async function showUserDetail(userId) {
+  try {
+    const response = await fetch(`${API_BASE_URL}/admin/users/${userId}`, {
+      headers: getAuthHeaders()
+    });
+    
+    const data = await response.json();
+    
+    if (data.code === 0) {
+      const user = data.data.user;
+      const body = document.getElementById('userDetailBody');
+      
+      let orderStatsHtml = '';
+      if (data.data.order_stats && data.data.order_stats.length > 0) {
+        orderStatsHtml = `
+          <div>
+            <div style="color: #999; font-size: 12px; margin-bottom: 8px; font-weight: 600;">订单统计</div>
+            <div style="display: grid; gap: 8px;">
+              ${data.data.order_stats.map(stat => {
+                const totalSpent = parseFloat(stat.total_spent) || 0;
+                return `
+                  <div style="display: flex; justify-content: space-between; padding: 8px; background-color: #f9fafb; border-radius: 4px;">
+                    <span>${getTypeLabel(stat.type)}</span>
+                    <span>订单数: ${stat.count} | 消费: ¥${totalSpent.toFixed(2)}</span>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </div>
+        `;
+      }
+      
+      let recentOrdersHtml = '';
+      if (data.data.recent_orders && data.data.recent_orders.length > 0) {
+        const maxDisplay = 5; // 最多显示5条
+        const orders = data.data.recent_orders;
+        const hasMore = orders.length > maxDisplay;
+        const displayOrders = orders.slice(0, maxDisplay);
+        
+        recentOrdersHtml = `
+          <div>
+            <div style="color: #999; font-size: 12px; margin-bottom: 8px; font-weight: 600;">
+              最近订单 (共${orders.length}条${hasMore ? `，显示前${maxDisplay}条` : ''})
+            </div>
+            <div style="display: grid; gap: 8px;">
+              ${displayOrders.map(order => {
+                const price = parseFloat(order.price) || 0;
+                return `
+                  <div style="display: flex; justify-content: space-between; padding: 8px; background-color: #f9fafb; border-radius: 4px; font-size: 13px;">
+                    <span>#${order.id} | ${getTypeLabel(order.type)}</span>
+                    <span>¥${price.toFixed(2)} | <span class="status-badge status-${order.status}">${getStatusLabel(order.status)}</span></span>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </div>
+        `;
+      }
+      
+      body.innerHTML = `
+        <div style="display: grid; gap: 16px;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+            <div>
+              <div style="color: #999; font-size: 12px; margin-bottom: 4px;">用户ID</div>
+              <div style="font-weight: 600; font-size: 16px;">#${user.id}</div>
+            </div>
+            <div>
+              <div style="color: #999; font-size: 12px; margin-bottom: 4px;">手机号</div>
+              <div style="font-weight: 600;">${user.phone || '-'}</div>
+            </div>
+            <div>
+              <div style="color: #999; font-size: 12px; margin-bottom: 4px;">昵称</div>
+              <div style="font-weight: 600;">${user.nickname || '未设置'}</div>
+            </div>
+            <div>
+              <div style="color: #999; font-size: 12px; margin-bottom: 4px;">总消费</div>
+              <div style="font-weight: 600; color: #ef4444; font-size: 18px;">¥${(parseFloat(user.total_spent) || 0).toFixed(2)}</div>
+            </div>
+            <div>
+              <div style="color: #999; font-size: 12px; margin-bottom: 4px;">账户余额</div>
+              <div style="font-weight: 600; color: #10b981; font-size: 16px;">¥${(parseFloat(user.balance) || 0).toFixed(2)}</div>
+            </div>
+            <div>
+              <div style="color: #999; font-size: 12px; margin-bottom: 4px;">注册时间</div>
+              <div>${formatDateTime(user.created_at)}</div>
+            </div>
+            <div>
+              <div style="color: #999; font-size: 12px; margin-bottom: 4px;">最后更新</div>
+              <div>${formatDateTime(user.updated_at)}</div>
+            </div>
+          </div>
+          ${orderStatsHtml}
+          ${recentOrdersHtml}
+        </div>
+      `;
+      
+      document.getElementById('userDetailModal').classList.add('active');
+    }
+  } catch (err) {
+    console.error('加载用户详情出错:', err);
+  }
+}
+
+function showAdjustBalance(userId) {
+  selectedUserId = userId;
+  document.getElementById('adjustType').value = 'add';
+  document.getElementById('adjustAmount').value = '';
+  document.getElementById('adjustRemark').value = '';
+  document.getElementById('adjustBalanceModal').classList.add('active');
+}
+
+async function submitAdjustBalance() {
+  if (!selectedUserId) return;
+  
+  const type = document.getElementById('adjustType').value;
+  const amount = parseFloat(document.getElementById('adjustAmount').value);
+  const remark = document.getElementById('adjustRemark').value.trim();
+  
+  if (!amount || amount <= 0) {
+    alert('请输入有效的金额');
+    return;
+  }
+  
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/admin/users/${selectedUserId}/adjust-balance`,
+      {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ amount, type, remark })
+      }
+    );
+    
+    const data = await response.json();
+    
+    if (data.code === 0) {
+      alert('余额调整成功');
+      closeModal('adjustBalanceModal');
+      loadUsers();
+    } else {
+      alert(data.message || '调整失败');
+    }
+  } catch (err) {
+    console.error('调整余额出错:', err);
+    alert('网络错误');
+  }
+}
+
+// ==================== 设置页面 ====================
+async function savePrices() {
+  const sms = parseFloat(document.getElementById('smsPrice').value);
+  const call = parseFloat(document.getElementById('callPrice').value);
+  const human = parseFloat(document.getElementById('humanPrice').value);
+  
+  if (!sms || !call || !human) {
+    alert('请输入所有价格');
+    return;
+  }
+  
+  alert('价格配置已更新（当前为演示版本，实际需要保存到后端数据库）');
+}
+
+async function exportOrderData() {
+  const startDate = document.getElementById('exportStartDate').value;
+  const endDate = document.getElementById('exportEndDate').value;
+  
+  if (!startDate || !endDate) {
+    alert('请选择日期范围');
+    return;
+  }
+  
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/admin/export/orders?startDate=${startDate}&endDate=${endDate}`,
+      {
+        headers: getAuthHeaders()
+      }
+    );
+    
+    const data = await response.json();
+    
+    if (data.code === 0) {
+      downloadCSV(data.data, 'orders.csv');
+    } else {
+      alert(data.message || '导出失败');
+    }
+  } catch (err) {
+    console.error('导出数据出错:', err);
+    alert('网络错误');
+  }
+}
+
+function downloadCSV(data, filename) {
+  if (!data || data.length === 0) {
+    alert('没有数据可导出');
+    return;
+  }
+  
+  // 获取所有列
+  const headers = Object.keys(data[0]);
+  const csv = [
+    headers.join(','),
+    ...data.map(row => 
+      headers.map(header => {
+        const value = row[header];
+        // 处理特殊字符
+        if (typeof value === 'string' && (value.includes(',') || value.includes('"') || value.includes('\n'))) {
+          return `"${value.replace(/"/g, '""')}"`;
+        }
+        return value;
+      }).join(',')
+    )
+  ].join('\n');
+  
+  // 创建Blob并下载
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = filename;
+  link.click();
+}
+
+// ==================== 工具函数 ====================
+function getAuthHeaders() {
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${adminToken}`
+  };
+  
+  // 添加 CSRF Token（如果存在）
+  const csrfToken = apiClient.getCSRFToken();
+  if (csrfToken) {
+    headers['X-CSRF-Token'] = csrfToken;
+  }
+  
+  return headers;
+}
+
+function getTypeLabel(type) {
+  const labels = {
+    'sms': '传话短信',
+    'call': '和解电话',
+    'human': '人工传话'
+  };
+  return labels[type] || type;
+}
+
+function getStatusLabel(status) {
+  const labels = {
+    'pending': '待处理',
+    'processing': '处理中',
+    'completed': '已完成',
+    'failed': '已失败'
+  };
+  return labels[status] || status;
+}
+
+function formatDate(dateStr) {
+  if (!dateStr) return '-';
+  const date = new Date(dateStr);
+  return date.toLocaleDateString('zh-CN');
+}
+
+function formatDateTime(dateStr) {
+  if (!dateStr) return '-';
+  const date = new Date(dateStr);
+  return date.toLocaleString('zh-CN');
+}
+
+function updatePagination(pagination, containerId, infoId, prevBtnId, nextBtnId) {
+  const container = document.getElementById(containerId);
+  const infoEl = document.getElementById(infoId);
+  const prevBtn = document.getElementById(prevBtnId);
+  const nextBtn = document.getElementById(nextBtnId);
+  
+  infoEl.textContent = `第 ${pagination.page} 页，共 ${pagination.totalPages} 页`;
+  prevBtn.disabled = pagination.page <= 1;
+  nextBtn.disabled = pagination.page >= pagination.totalPages;
+}
+
+function showError(elementId, message) {
+  const el = document.getElementById(elementId);
+  if (el) {
+    el.textContent = message;
+  }
+}
+
+function closeModal(modalId) {
+  const modal = document.getElementById(modalId);
+  if (modal) {
+    modal.classList.remove('active');
+  }
+}
+
+// 将需要在 HTML 中使用的函数暴露到全局作用域
+window.showOrderDetail = showOrderDetail;
+window.showUserDetail = showUserDetail;
+window.updateOrderStatus = updateOrderStatus;
+window.closeModal = closeModal;

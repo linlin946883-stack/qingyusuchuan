@@ -1,0 +1,59 @@
+/**
+ * 前端配置文件
+ * 部署时修改此文件中的 API_URL 即可
+ */
+
+// 环境配置
+const ENV = {
+  // 开发环境配置
+  development: {
+    API_URL: 'http://localhost:3000/api',
+    FRONTEND_URL: 'http://localhost:8000'
+  },
+  
+  // 生产环境配置
+  production: {
+    API_URL: 'https://api.lov2u.cn/api',  // 修改为你的后端地址
+    FRONTEND_URL: 'https://yourdomain.com'       // 修改为你的前端地址
+  },
+  
+  // 测试环境配置
+  staging: {
+    API_URL: 'https://api-staging.yourdomain.com/api',
+    FRONTEND_URL: 'https://staging.yourdomain.com'
+  }
+};
+
+// 自动检测环境（基于域名）
+function detectEnvironment() {
+  const hostname = window.location.hostname;
+  
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    return 'development';
+  } else if (hostname.includes('staging') || hostname.includes('test')) {
+    return 'staging';
+  } else {
+    return 'production';
+  }
+}
+
+// 获取当前环境
+const currentEnv = window.APP_ENV || detectEnvironment();
+
+// 导出配置
+const config = ENV[currentEnv];
+
+// 设置全局变量
+window.API_BASE_URL = config.API_URL;
+window.FRONTEND_URL = config.FRONTEND_URL;
+window.CURRENT_ENV = currentEnv;
+
+console.log(`✓ 环境: ${currentEnv}`);
+console.log(`✓ API 地址: ${config.API_URL}`);
+
+// 也可以直接导出配置对象
+window.AppConfig = config;
+
+// ES 模块导出
+export { ENV, config as API_CONFIG, currentEnv };
+export default config;

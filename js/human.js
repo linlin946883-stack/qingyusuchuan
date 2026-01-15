@@ -1,3 +1,20 @@
+// 导入依赖
+import './config.js';
+import './api-client.js';
+import {
+  disableBodyScroll,
+  enableBodyScroll,
+  hasToken,
+  getUserInfo,
+  requestSubmitToken,
+  createOrder,
+  getPresets,
+  getPrices,
+  showLoading,
+  hideLoading,
+  showToast
+} from './common.js';
+import TimePicker from './picker.js';
 
 let contactMethods = ["手机短信", "微信", "QQ", "抖音", "快手", "小红书", "其他平台"];
 let selectedContactMethod = '';
@@ -367,9 +384,44 @@ async function submitOrderHuman() {
     hideLoading();
     
     if (result.code === 0) {
-      showToast('订单已创建');
-      currentSubmitToken = null; // Token已使用
-      setTimeout(() => { window.location.href = '../index.html'; }, 1500);
+      const orderId = result.data.order_id;
+      const orderPrice = result.data.price;
+      
+      // 如果价格为0（"其他平台"），直接成功
+      if (orderPrice === 0) {
+        showToast('订单已创建');
+        currentSubmitToken = null;
+        setTimeout(() => { window.location.href = '../index.html'; }, 1500);
+      } else {
+        // 需要支付
+        try {
+          const payResult = await window.wechatPay.executePay(
+            orderId,
+            orderPrice,
+            '轻羽速传-人工服务'
+          );
+          
+          if (payResult.success) {
+            showToast('支付成功');
+            currentSubmitToken = null;
+            setTimeout(() => { window.location.href = '../index.html'; }, 800);
+          }
+        } catch (payError) {
+          if (payError.cancelled) {
+            showToast('支付已取消');
+          } else {
+            showToast(payError.message || '支付失败');
+          }
+          currentSubmitToken = null;
+          requestPageSubmitTokenHuman();
+          
+          // 恢复按钮状态
+          isSubmitting = false;
+          submitBtn.disabled = false;
+          submitBtn.style.opacity = '1';
+          submitBtn.style.cursor = 'pointer';
+        }
+      }
     } else {
       // 清空Token并重新请求
       currentSubmitToken = null;

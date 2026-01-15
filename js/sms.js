@@ -1,3 +1,23 @@
+// 导入依赖
+import './config.js';
+import './api-client.js';
+import './wechat-pay.js';
+// wechat-pay.js 已在 HTML 中通过 <script> 标签加载，无需重复导入
+import {
+  disableBodyScroll,
+  enableBodyScroll,
+  hasToken,
+  getUserInfo,
+  requestSubmitToken,
+  createOrder,
+  getPresets,
+  getPrices,
+  showLoading,
+  hideLoading,
+  showToast
+} from './common.js';
+import TimePicker from './picker.js';
+
 let selectedDateTime = '';
 let presetCategories = {};
 let currentCategory = null;
@@ -549,16 +569,55 @@ async function submitOrder() {
     hideLoading();
     
     if (result.code === 0) {
-      showToast('订单创建成功');
-      // Token已被使用，清空
-      currentSubmitToken = null;
-      setTimeout(() => {
-        window.location.href = '../index.html';
-      }, 800);
+      const orderId = result.data.order_id;
+      const orderPrice = result.data.price;
+      
+      // 调起微信支付
+      try {
+        showLoading('正在调起支付...');
+        
+        // 使用微信支付工具类
+        const payResult = await window.wechatPay.executePay(
+          orderId,
+          orderPrice,
+          '轻羽速传-短信服务'
+        );
+        
+        hideLoading();
+        
+        if (payResult.success) {
+          showToast('支付成功');
+          // Token已被使用，清空
+          currentSubmitToken = null;
+          setTimeout(() => {
+            window.location.href = '../index.html';
+          }, 800);
+        }
+      } catch (payError) {
+        hideLoading();
+        
+        // 判断是否用户取消支付
+        if (payError.cancelled) {
+          showToast('支付已取消');
+        } else {
+          showToast(payError.message || '支付失败');
+        }
+        
+        // 支付失败后重新请求Token
+        currentSubmitToken = null;
+        requestPageSubmitToken();
+        
+        // 恢复按钮状态
+        isSubmitting = false;
+        submitBtn.disabled = false;
+        submitBtn.style.opacity = '1';
+        submitBtn.style.cursor = 'pointer';
+      }
     } else {
-      // 失败后重新请求Token
+      // 订单创建失败
       currentSubmitToken = null;
       requestPageSubmitToken();
+      
       // 恢复按钮状态
       isSubmitting = false;
       submitBtn.disabled = false;

@@ -34,10 +34,21 @@ router.get('/', authenticate, async (req, res, next) => {
   }
 });
 
-// 获取用户信息（不需要认证，保留用于后向兼容）
-router.get('/:id', async (req, res, next) => {
+// 获取指定用户信息（需要认证，只能查看自己或管理员查看所有）
+router.get('/:id', authenticate, async (req, res, next) => {
   try {
     const { id } = req.params;
+    const authenticatedUserId = req.user.userId;
+    const userRole = req.user.role || 'user';
+
+    // 权限验证：只能查看自己的信息，除非是管理员
+    if (userRole !== 'admin' && parseInt(id) !== authenticatedUserId) {
+      return res.status(403).json({
+        code: 403,
+        message: '您没有权限查看该用户信息'
+      });
+    }
+
     const connection = await pool.getConnection();
 
     try {
@@ -106,18 +117,19 @@ router.patch('/balance', authenticate, async (req, res, next) => {
   }
 });
 
-// 更新用户余额（需要认证）- 兼容原有路由
+// 更新用户余额（需要认证）- 仅管理员可操作
 router.patch('/:id/balance', authenticate, async (req, res, next) => {
   try {
     const { id } = req.params;
     const authenticatedUserId = req.user.userId;
+    const userRole = req.user.role || 'user';
     const { amount } = req.body;
 
-    // 验证用户权限，只能修改自己的余额
-    if (parseInt(id) !== authenticatedUserId) {
+    // 权限验证：只有管理员可以修改用户余额
+    if (userRole !== 'admin') {
       return res.status(403).json({
         code: 403,
-        message: '您没有权限修改该用户的余额'
+        message: '您没有权限修改用户余额，请联系管理员'
       });
     }
 

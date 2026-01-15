@@ -1,677 +1,642 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../config/database');
-const { authenticate } = require('../middleware/auth');
-const { logAdminAccess, cleanOldLogs } = require('../middleware/adminLogger');
+const jwt = require('jsonwebtoken');
+const bcryptjs = require('bcryptjs');
 
-// 应用日志中间件到所有管理员路由
-router.use(logAdminAccess);
-
-// 简单的管理员验证中间件（后续可以改为基于角色的权限）
-const adminAuth = async (req, res, next) => {
-  try {
-    // 先进行用户认证
-    await authenticate(req, res, () => {});
-    
-    // 检查是否是管理员
-    const connection = await pool.getConnection();
-    try {
-      const [users] = await connection.execute(
-        'SELECT role FROM users WHERE id = ?',
-        [req.user.userId]
-      );
-      
-      if (users.length === 0 || users[0].role !== 'admin') {
-        return res.status(403).json({
-          code: 403,
-          message: '权限不足，仅管理员可访问'
-        });
-      }
-      
-      next();
-    } finally {
-      connection.release();
-    }
-  } catch (error) {
-    res.status(401).json({
+// 管理员认证中间件
+const authenticateAdmin = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  
+  if (!authHeader) {
+    console.log('❌ 管理员认证失败: 缺少 Authorization 头');
+    return res.status(401).json({
       code: 401,
-      message: '认证失败'
+      message: '未授权，请先登录'
+    });
+  }
+  
+  const token = authHeader.split(' ')[1];
+  
+  if (!token) {
+    console.log('❌ 管理员认证失败: Token格式错误');
+    return res.status(401).json({
+      code: 401,
+      message: '未授权，请先登录'
+    });
+  }
+  
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your_secret_key');
+    
+    if (decoded.role !== 'admin') {
+      console.log('❌ 管理员认证失败: 角色权限不足', decoded);
+      return res.status(403).json({
+        code: 403,
+        message: '禁止访问，需要管理员权限'
+      });
+    }
+    
+    req.admin = decoded;
+    next();
+  } catch (err) {
+    console.log('❌ 管理员认证失败: Token验证失败', err.message);
+    return res.status(401).json({
+      code: 401,
+      message: 'Token无效或已过期'
     });
   }
 };
 
-// ==================== 数据统计看板 ====================
-
-// 获取总览统计
-router.get('/dashboard/stats', adminAuth, async (req, res, next) => {
+// 管理员登录
+router.post('/login', async (req, res) => {
   try {
-    const connection = await pool.getConnection();
+    const { username, password } = req.body;
     
-    try {
-      // 用户统计
-      const [userStats] = await connection.execute(
-        'SELECT COUNT(*) as total, SUM(balance) as totalBalance FROM users'
-      );
-      
-      // 订单统计
-      const [orderStats] = await connection.execute(`
-        SELECT 
-          COUNT(*) as total,
-          SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending,
-          SUM(CASE WHEN status = 'processing' THEN 1 ELSE 0 END) as processing,
-          SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed,
-          SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) as failed,
-          SUM(price) as totalRevenue,
-          SUM(CASE WHEN status = 'completed' THEN price ELSE 0 END) as completedRevenue
-        FROM orders
-      `);
-      
-      // 今日订单
-      const [todayOrders] = await connection.execute(`
-        SELECT COUNT(*) as count, SUM(price) as revenue
-        FROM orders 
-        WHERE DATE(created_at) = CURDATE()
-      `);
-      
-      // 订单类型分布
-      const [typeStats] = await connection.execute(`
-        SELECT 
-          type,
-          COUNT(*) as count,
-          SUM(price) as revenue
-        FROM orders
-        GROUP BY type
-      `);
-      
-      res.json({
-        code: 0,
-        data: {
-          users: {
-            total: userStats[0].total,
-            totalBalance: parseFloat(userStats[0].totalBalance || 0)
-          },
-          orders: {
-            total: orderStats[0].total,
-            pending: orderStats[0].pending,
-            processing: orderStats[0].processing,
-            completed: orderStats[0].completed,
-            failed: orderStats[0].failed,
-            totalRevenue: parseFloat(orderStats[0].totalRevenue || 0),
-            completedRevenue: parseFloat(orderStats[0].completedRevenue || 0)
-          },
-          today: {
-            orders: todayOrders[0].count,
-            revenue: parseFloat(todayOrders[0].revenue || 0)
-          },
-          typeDistribution: typeStats
-        }
-      });
-    } finally {
-      connection.release();
-    }
-  } catch (error) {
-    next(error);
-  }
-});
-
-// ==================== 订单管理 ====================
-
-// 获取所有订单（分页）
-router.get('/orders', adminAuth, async (req, res, next) => {
-  try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 20;
-    const { status, type, userId } = req.query;
-    const offset = (page - 1) * limit;
-    
-    const connection = await pool.getConnection();
-    
-    try {
-      let whereClause = [];
-      let params = [];
-      
-      if (status) {
-        whereClause.push('o.status = ?');
-        params.push(status);
-      }
-      
-      if (type) {
-        whereClause.push('o.type = ?');
-        params.push(type);
-      }
-      
-      if (userId) {
-        whereClause.push('o.user_id = ?');
-        params.push(parseInt(userId));
-      }
-      
-      const where = whereClause.length > 0 ? 'WHERE ' + whereClause.join(' AND ') : '';
-      
-      // 获取订单列表（带用户信息）
-      const ordersQuery = `
-        SELECT 
-          o.*,
-          u.phone as user_phone,
-          u.nickname as user_nickname
-        FROM orders o
-        LEFT JOIN users u ON o.user_id = u.id
-        ${where}
-        ORDER BY o.created_at DESC
-        LIMIT ? OFFSET ?
-      `;
-      
-      const queryParams = [...params, limit, offset];
-      console.log('订单查询参数:', { queryParams, limit, offset, page, where, sql: ordersQuery.substring(0, 200) });
-      const [orders] = await connection.query(ordersQuery, queryParams);
-      
-      // 获取总数
-      const countQuery = `
-        SELECT COUNT(*) as total 
-        FROM orders o
-        ${where}
-      `;
-      
-      const [countResult] = await connection.query(countQuery, params);
-      
-      res.json({
-        code: 0,
-        data: {
-          orders,
-          pagination: {
-            page: parseInt(page),
-            limit: parseInt(limit),
-            total: countResult[0].total
-          }
-        }
-      });
-    } finally {
-      connection.release();
-    }
-  } catch (error) {
-    next(error);
-  }
-});
-
-// 获取单个订单详情（管理员）
-router.get('/orders/:id', adminAuth, async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    const connection = await pool.getConnection();
-    
-    try {
-      const [orders] = await connection.query(
-        `SELECT 
-          o.*,
-          u.phone as user_phone,
-          u.nickname as user_nickname
-        FROM orders o
-        LEFT JOIN users u ON o.user_id = u.id
-        WHERE o.id = ?`,
-        [id]
-      );
-      
-      if (orders.length === 0) {
-        return res.status(404).json({
-          code: 404,
-          message: '订单不存在'
-        });
-      }
-      
-      res.json({
-        code: 0,
-        data: orders[0]
-      });
-    } finally {
-      connection.release();
-    }
-  } catch (error) {
-    next(error);
-  }
-});
-
-// 更新订单状态（管理员手动操作）
-router.patch('/orders/:id', adminAuth, async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    const { status, remark, virtual_number } = req.body;
-    
-    const connection = await pool.getConnection();
-    
-    try {
-      const updates = [];
-      const params = [];
-      
-      if (status) {
-        updates.push('status = ?');
-        params.push(status);
-      }
-      
-      if (remark !== undefined) {
-        updates.push('remark = ?');
-        params.push(remark);
-      }
-      
-      if (virtual_number !== undefined) {
-        updates.push('virtual_number = ?');
-        params.push(virtual_number);
-      }
-      
-      if (updates.length === 0) {
-        return res.status(400).json({
-          code: 400,
-          message: '没有要更新的字段'
-        });
-      }
-      
-      updates.push('updated_at = NOW()');
-      params.push(id);
-      
-      await connection.query(
-        `UPDATE orders SET ${updates.join(', ')} WHERE id = ?`,
-        params
-      );
-      
-      res.json({
-        code: 0,
-        message: '订单更新成功'
-      });
-    } finally {
-      connection.release();
-    }
-  } catch (error) {
-    next(error);
-  }
-});
-
-// 删除订单（需要二次确认，建议改为软删除）
-router.delete('/orders/:id', adminAuth, async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    const { confirm } = req.body; // 需要前端传递 confirm: true
-    
-    // 安全检查：必须明确确认
-    if (confirm !== true) {
+    if (!username || !password) {
       return res.status(400).json({
         code: 400,
-        message: '删除操作需要确认，请传递 confirm: true'
+        message: '用户名和密码不能为空'
       });
     }
     
     const connection = await pool.getConnection();
     
-    try {
-      // 1. 先检查订单是否存在
-      const [orders] = await connection.query(
-        'SELECT id, type, status, user_id, price FROM orders WHERE id = ?', 
-        [id]
-      );
-      
-      if (orders.length === 0) {
-        return res.status(404).json({
-          code: 404,
-          message: '订单不存在'
-        });
-      }
-      
-      const order = orders[0];
-      
-      // 2. 检查订单状态，防止删除处理中的订单
-      if (order.status === 'processing') {
-        return res.status(400).json({
-          code: 400,
-          message: '无法删除处理中的订单，请先将状态改为已完成或失败'
-        });
-      }
-      
-      // 3. 记录删除操作到日志（便于审计）
-      await connection.execute(
-        `INSERT INTO admin_logs (user_id, user_phone, user_nickname, endpoint, method, status_code, response_code, ip_address, metadata)
-         SELECT ?, u.phone, u.nickname, '/admin/orders/:id', 'DELETE', 200, 0, ?, ?
-         FROM users u WHERE u.id = ?`,
-        [
-          req.user.userId, 
-          req.ip || req.connection.remoteAddress,
-          JSON.stringify({ deleted_order: order }),
-          req.user.userId
-        ]
-      );
-      
-      // 4. 执行删除
-      await connection.query('DELETE FROM orders WHERE id = ?', [id]);
-      
-      res.json({
-        code: 0,
-        message: '订单删除成功',
-        data: {
-          deleted_order_id: id,
-          deleted_order_type: order.type
-        }
-      });
-    } finally {
-      connection.release();
-    }
-  } catch (error) {
-    next(error);
-  }
-});
-
-// ==================== 用户管理 ====================
-
-// 获取所有用户（分页）
-router.get('/users', adminAuth, async (req, res, next) => {
-  try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 20;
-    const { search } = req.query;
-    const offset = (page - 1) * limit;
+    // 查询管理员账户（从users表中role为admin的记录）
+    const [rows] = await connection.query(
+      `SELECT id, username, password_hash, role FROM users WHERE username = ? AND role = 'admin'`,
+      [username]
+    );
     
-    const connection = await pool.getConnection();
+    connection.release();
     
-    try {
-      let whereClause = '';
-      let params = [];
-      
-      if (search) {
-        whereClause = 'WHERE phone LIKE ? OR nickname LIKE ?';
-        params.push(`%${search}%`, `%${search}%`);
-      }
-      
-      const [users] = await connection.query(`
-        SELECT 
-          id, openid, phone, nickname, avatar, balance, role, is_super_admin, created_at, updated_at
-        FROM users
-        ${whereClause}
-        ORDER BY created_at DESC
-        LIMIT ? OFFSET ?
-      `, [...params, limit, offset]);
-      
-      const [countResult] = await connection.query(`
-        SELECT COUNT(*) as total FROM users ${whereClause}
-      `, params);
-      
-      res.json({
-        code: 0,
-        data: {
-          users,
-          pagination: {
-            page: page,
-            limit: limit,
-            total: countResult[0].total
-          }
-        }
-      });
-    } finally {
-      connection.release();
-    }
-  } catch (error) {
-    next(error);
-  }
-});
-
-// 更新用户余额
-router.patch('/users/:id/balance', adminAuth, async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    const { amount, operation, remark } = req.body; // operation: 'add' or 'set'
-    
-    if (!amount || !operation) {
-      return res.status(400).json({
-        code: 400,
-        message: '缺少必要参数'
+    if (rows.length === 0) {
+      return res.status(401).json({
+        code: 401,
+        message: '用户名或密码错误'
       });
     }
     
-    const connection = await pool.getConnection();
+    const admin = rows[0];
     
-    try {
-      await connection.beginTransaction();
-      
-      if (operation === 'add') {
-        // 增加余额
-        await connection.execute(
-          'UPDATE users SET balance = balance + ? WHERE id = ?',
-          [amount, id]
-        );
-      } else if (operation === 'set') {
-        // 设置余额
-        await connection.execute(
-          'UPDATE users SET balance = ? WHERE id = ?',
-          [amount, id]
-        );
-      } else {
-        await connection.rollback();
-        return res.status(400).json({
-          code: 400,
-          message: '无效的操作类型'
-        });
-      }
-      
-      // 记录到支付表
-      await connection.execute(
-        `INSERT INTO payments (user_id, type, amount, status, remark) 
-         VALUES (?, 'admin_adjust', ?, 'completed', ?)`,
-        [id, amount, remark || '管理员调整余额']
-      );
-      
-      await connection.commit();
-      
-      res.json({
-        code: 0,
-        message: '余额更新成功'
-      });
-    } catch (error) {
-      await connection.rollback();
-      throw error;
-    } finally {
-      connection.release();
-    }
-  } catch (error) {
-    next(error);
-  }
-});
-
-// 更新用户角色
-router.patch('/users/:id/role', adminAuth, async (req, res, next) => {
-  try {
-    const { id } = req.params;
-    const { role } = req.body;
-    const currentUserId = req.user.userId;
+    // 验证密码
+    const passwordMatch = await bcryptjs.compare(password, admin.password_hash);
     
-    if (!['user', 'admin'].includes(role)) {
-      return res.status(400).json({
-        code: 400,
-        message: '无效的角色'
+    if (!passwordMatch) {
+      return res.status(401).json({
+        code: 401,
+        message: '用户名或密码错误'
       });
     }
     
-    // 防止修改自己的权限
-    if (parseInt(id) === currentUserId) {
-      return res.status(403).json({
-        code: 403,
-        message: '不能修改自己的权限'
-      });
-    }
-    
-    const connection = await pool.getConnection();
-    
-    try {
-      // 检查目标用户是否是超级管理员
-      const [users] = await connection.query(
-        'SELECT is_super_admin FROM users WHERE id = ?',
-        [id]
-      );
-      
-      if (users.length === 0) {
-        return res.status(404).json({
-          code: 404,
-          message: '用户不存在'
-        });
-      }
-      
-      if (users[0].is_super_admin === 1) {
-        return res.status(403).json({
-          code: 403,
-          message: '不能修改超级管理员的权限'
-        });
-      }
-      
-      await connection.execute(
-        'UPDATE users SET role = ? WHERE id = ?',
-        [role, id]
-      );
-      
-      res.json({
-        code: 0,
-        message: '角色更新成功'
-      });
-    } finally {
-      connection.release();
-    }
-  } catch (error) {
-    next(error);
-  }
-});
-
-// ==================== 访问日志管理 ====================
-
-// 获取管理员访问日志
-router.get('/logs/access', adminAuth, async (req, res, next) => {
-  try {
-    const { page = 1, limit = 50, user_id, days = 7 } = req.query;
-    const offset = (parseInt(page) - 1) * parseInt(limit);
-
-    const connection = await pool.getConnection();
-
-    try {
-      let whereClause = 'WHERE created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)';
-      let params = [parseInt(days)];
-
-      if (user_id) {
-        whereClause += ' AND user_id = ?';
-        params.push(parseInt(user_id));
-      }
-
-      // 获取日志列表
-      const [logs] = await connection.query(
-        `SELECT 
-          id, user_id, user_phone, user_nickname, endpoint, method, status_code, 
-          ip_address, response_code, created_at
-        FROM admin_logs
-        ${whereClause}
-        ORDER BY created_at DESC
-        LIMIT ? OFFSET ?`,
-        [...params, parseInt(limit), offset]
-      );
-
-      // 获取总数
-      const [countResult] = await connection.query(
-        `SELECT COUNT(*) as total FROM admin_logs ${whereClause}`,
-        params
-      );
-
-      res.json({
-        code: 0,
-        data: {
-          logs,
-          pagination: {
-            page: parseInt(page),
-            limit: parseInt(limit),
-            total: countResult[0].total
-          }
-        }
-      });
-    } finally {
-      connection.release();
-    }
-  } catch (error) {
-    next(error);
-  }
-});
-
-// 获取管理员操作统计
-router.get('/logs/stats', adminAuth, async (req, res, next) => {
-  try {
-    const connection = await pool.getConnection();
-
-    try {
-      // 统计各管理员的操作数
-      const [adminStats] = await connection.query(`
-        SELECT 
-          user_id, user_phone, user_nickname,
-          COUNT(*) as access_count,
-          COUNT(DISTINCT DATE(created_at)) as access_days,
-          MAX(created_at) as last_access
-        FROM admin_logs
-        WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
-        GROUP BY user_id, user_phone, user_nickname
-        ORDER BY access_count DESC
-      `);
-
-      // 统计各端点的访问数
-      const [endpointStats] = await connection.query(`
-        SELECT 
-          endpoint,
-          method,
-          COUNT(*) as access_count,
-          COUNT(DISTINCT user_id) as user_count
-        FROM admin_logs
-        WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
-        GROUP BY endpoint, method
-        ORDER BY access_count DESC
-        LIMIT 20
-      `);
-
-      res.json({
-        code: 0,
-        data: {
-          adminStats,
-          endpointStats
-        }
-      });
-    } finally {
-      connection.release();
-    }
-  } catch (error) {
-    next(error);
-  }
-});
-
-// 手动清理旧日志
-router.delete('/logs/cleanup', adminAuth, async (req, res, next) => {
-  try {
-    const { days = 90 } = req.body;
-    
-    if (days < 7) {
-      return res.status(400).json({
-        code: 400,
-        message: '保留天数不能少于7天'
-      });
-    }
-    
-    const deletedCount = await cleanOldLogs(parseInt(days));
+    // 生成Token
+    const token = jwt.sign(
+      {
+        userId: admin.id,
+        username: admin.username,
+        role: 'admin'
+      },
+      process.env.JWT_SECRET || 'your_secret_key',
+      { expiresIn: '7d' }
+    );
     
     res.json({
       code: 0,
-      message: '日志清理成功',
+      message: '登录成功',
       data: {
-        deletedCount,
-        daysKept: parseInt(days)
+        token,
+        admin: {
+          id: admin.id,
+          username: admin.username,
+          role: admin.role
+        }
       }
     });
-  } catch (error) {
-    next(error);
+  } catch (err) {
+    console.error('管理员登录出错:', err);
+    res.status(500).json({
+      code: 500,
+      message: '服务器错误'
+    });
   }
 });
 
-// ==================== 价格配置管理 ====================
+// 获取仪表盘数据
+router.get('/dashboard', authenticateAdmin, async (req, res) => {
+  try {
+    const connection = await pool.getConnection();
+    
+    // 获取总用户数
+    const [userStats] = await connection.query(
+      `SELECT COUNT(*) as total_users FROM users WHERE role = 'user'`
+    );
+    
+    // 获取今日新用户
+    const [todayUsers] = await connection.query(
+      `SELECT COUNT(*) as new_users FROM users WHERE role = 'user' AND DATE(created_at) = CURDATE()`
+    );
+    
+    // 获取总订单数
+    const [orderStats] = await connection.query(
+      `SELECT COUNT(*) as total_orders FROM orders`
+    );
+    
+    // 获取今日订单
+    const [todayOrders] = await connection.query(
+      `SELECT COUNT(*) as new_orders FROM orders WHERE DATE(created_at) = CURDATE()`
+    );
+    
+    // 获取各类型订单分布
+    const [ordersByType] = await connection.query(
+      `SELECT type, COUNT(*) as count FROM orders GROUP BY type`
+    );
+    
+    // 获取各状态订单分布
+    const [ordersByStatus] = await connection.query(
+      `SELECT status, COUNT(*) as count FROM orders GROUP BY status`
+    );
+    
+    // 获取总收入
+    const [revenue] = await connection.query(
+      `SELECT SUM(price) as total_revenue FROM orders WHERE status = 'completed'`
+    );
+    
+    // 获取今日收入
+    const [todayRevenue] = await connection.query(
+      `SELECT SUM(price) as daily_revenue FROM orders WHERE status = 'completed' AND DATE(created_at) = CURDATE()`
+    );
+    
+    // 获取最近7天的订单趋势
+    const [orderTrend] = await connection.query(
+      `SELECT DATE(created_at) as date, COUNT(*) as count FROM orders 
+       WHERE created_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
+       GROUP BY DATE(created_at) ORDER BY date ASC`
+    );
+    
+    connection.release();
+    
+    res.json({
+      code: 0,
+      message: '获取仪表盘数据成功',
+      data: {
+        summary: {
+          total_users: userStats[0].total_users,
+          new_users: todayUsers[0].new_users,
+          total_orders: orderStats[0].total_orders,
+          new_orders: todayOrders[0].new_orders,
+          total_revenue: revenue[0].total_revenue ,
+          daily_revenue: todayRevenue[0].daily_revenue 
+        },
+        order_type_distribution: ordersByType.reduce((acc, item) => {
+          acc[item.type] = item.count;
+          return acc;
+        }, {}),
+        order_status_distribution: ordersByStatus.reduce((acc, item) => {
+          acc[item.status] = item.count;
+          return acc;
+        }, {}),
+        order_trend: orderTrend
+      }
+    });
+  } catch (err) {
+    console.error('获取仪表盘数据出错:', err);
+    res.status(500).json({
+      code: 500,
+      message: '服务器错误'
+    });
+  }
+});
 
-// 更新价格配置（需要重启服务器生效，或者使用动态配置）
-router.get('/config/prices', adminAuth, async (req, res, next) => {
-  const { ORDER_PRICES } = require('./config');
-  res.json({
-    code: 0,
-    data: ORDER_PRICES
-  });
+// 获取订单列表
+router.get('/orders', authenticateAdmin, async (req, res) => {
+  try {
+    const { page = 1, pageSize = 20, status, type, userId } = req.query;
+    const pageNum = parseInt(page) || 1;
+    const pageSizeNum = parseInt(pageSize) || 20;
+    const offset = (pageNum - 1) * pageSizeNum;
+    
+    const connection = await pool.getConnection();
+    
+    let query = 'SELECT * FROM orders WHERE 1=1';
+    const params = [];
+    
+    if (status && ['pending', 'processing', 'completed', 'failed'].includes(status)) {
+      query += ' AND status = ?';
+      params.push(status);
+    }
+    
+    if (type && ['sms', 'call', 'human'].includes(type)) {
+      query += ' AND type = ?';
+      params.push(type);
+    }
+    
+    if (userId) {
+      query += ' AND user_id = ?';
+      params.push(parseInt(userId));
+    }
+    
+    // 获取总数
+    const countQuery = query.replace('SELECT *', 'SELECT COUNT(*) as count');
+    const [countResult] = await connection.execute(countQuery, params);
+    const total = countResult[0].count;
+    
+    // 获取列表 - 使用字符串拼接而不是参数绑定
+    query += ` ORDER BY created_at DESC LIMIT ${pageSizeNum} OFFSET ${offset}`;
+    
+    console.log('执行SQL查询:', query);
+    console.log('参数:', params);
+    
+    const [orders] = await connection.execute(query, params);
+    
+    connection.release();
+    
+    res.json({
+      code: 0,
+      message: '获取订单列表成功',
+      data: {
+        orders,
+        pagination: {
+          page: pageNum,
+          pageSize: pageSizeNum,
+          total,
+          totalPages: Math.ceil(total / pageSizeNum)
+        }
+      }
+    });
+  } catch (err) {
+    console.error('获取订单列表出错:', err);
+    res.status(500).json({
+      code: 500,
+      message: '服务器错误'
+    });
+  }
+});
+
+// 获取订单详情
+router.get('/orders/:id', authenticateAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const connection = await pool.getConnection();
+    
+    const [orders] = await connection.query(
+      `SELECT o.*, u.phone, u.nickname FROM orders o 
+       LEFT JOIN users u ON o.user_id = u.id 
+       WHERE o.id = ?`,
+      [id]
+    );
+    
+    connection.release();
+    
+    if (orders.length === 0) {
+      return res.status(404).json({
+        code: 404,
+        message: '订单不存在'
+      });
+    }
+    
+    res.json({
+      code: 0,
+      message: '获取订单详情成功',
+      data: orders[0]
+    });
+  } catch (err) {
+    console.error('获取订单详情出错:', err);
+    res.status(500).json({
+      code: 500,
+      message: '服务器错误'
+    });
+  }
+});
+
+// 更新订单状态
+router.put('/orders/:id/status', authenticateAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, remark } = req.body;
+    
+    if (!['pending', 'processing', 'completed', 'failed'].includes(status)) {
+      return res.status(400).json({
+        code: 400,
+        message: '无效的订单状态'
+      });
+    }
+    
+    const connection = await pool.getConnection();
+    
+    const [result] = await connection.query(
+      `UPDATE orders SET status = ?, remark = COALESCE(?, remark) WHERE id = ?`,
+      [status, remark || null, id]
+    );
+    
+    connection.release();
+    
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        code: 404,
+        message: '订单不存在'
+      });
+    }
+    
+    res.json({
+      code: 0,
+      message: '订单状态更新成功'
+    });
+  } catch (err) {
+    console.error('更新订单状态出错:', err);
+    res.status(500).json({
+      code: 500,
+      message: '服务器错误'
+    });
+  }
+});
+
+// 获取用户列表
+router.get('/users', authenticateAdmin, async (req, res) => {
+  try {
+    const { page = 1, pageSize = 20, phone, nickname } = req.query;
+    const pageNum = parseInt(page) || 1;
+    const pageSizeNum = parseInt(pageSize) || 20;
+    const offset = (pageNum - 1) * pageSizeNum;
+    
+    const connection = await pool.getConnection();
+    
+    let query = `
+      SELECT 
+        u.id, 
+        u.phone, 
+        u.nickname, 
+        u.balance, 
+        u.created_at, 
+        u.updated_at,
+        COALESCE((
+          SELECT SUM(o.price) 
+          FROM orders o 
+          WHERE o.user_id = u.id AND o.status = 'completed'
+        ), 0) as total_spent
+      FROM users u
+      WHERE u.role = "user"
+    `;
+    const params = [];
+    
+    if (phone) {
+      query += ' AND u.phone LIKE ?';
+      params.push(`%${phone}%`);
+    }
+    
+    if (nickname) {
+      query += ' AND u.nickname LIKE ?';
+      params.push(`%${nickname}%`);
+    }
+    
+    // 获取总数
+    const countQuery = `SELECT COUNT(DISTINCT u.id) as count FROM users u WHERE u.role = "user"${phone ? ' AND u.phone LIKE ?' : ''}${nickname ? ' AND u.nickname LIKE ?' : ''}`;
+    const countParams = [];
+    if (phone) countParams.push(`%${phone}%`);
+    if (nickname) countParams.push(`%${nickname}%`);
+    const [countResult] = await connection.query(countQuery, countParams);
+    const total = countResult[0].count;
+    
+    // 获取列表 - 使用字符串拼接
+    query += ` ORDER BY u.created_at DESC LIMIT ${pageSizeNum} OFFSET ${offset}`;
+    
+    console.log('执行用户查询SQL:', query);
+    console.log('查询参数:', params);
+    
+    const [users] = await connection.query(query, params);
+    
+    console.log('查询到的用户数量:', users.length);
+    if (users.length > 0) {
+      console.log('第一个用户数据示例:', users[0]);
+    }
+    
+    connection.release();
+    
+    res.json({
+      code: 0,
+      message: '获取用户列表成功',
+      data: {
+        users,
+        pagination: {
+          page: pageNum,
+          pageSize: pageSizeNum,
+          total,
+          totalPages: Math.ceil(total / pageSizeNum)
+        }
+      }
+    });
+  } catch (err) {
+    console.error('获取用户列表出错:', err);
+    res.status(500).json({
+      code: 500,
+      message: '服务器错误'
+    });
+  }
+});
+
+// 获取用户详情
+router.get('/users/:id', authenticateAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const connection = await pool.getConnection();
+    
+    // 获取用户基本信息
+    const [users] = await connection.query(
+      `SELECT 
+        u.id, 
+        u.phone, 
+        u.nickname, 
+        u.balance, 
+        u.created_at, 
+        u.updated_at,
+        COALESCE((
+          SELECT SUM(o.price) 
+          FROM orders o 
+          WHERE o.user_id = u.id AND o.status = 'completed'
+        ), 0) as total_spent
+      FROM users u
+      WHERE u.id = ? AND u.role = 'user'`,
+      [id]
+    );
+    
+    if (users.length === 0) {
+      connection.release();
+      return res.status(404).json({
+        code: 404,
+        message: '用户不存在'
+      });
+    }
+    
+    const user = users[0];
+    
+    // 获取用户订单统计
+    const [orderStats] = await connection.query(
+      `SELECT type, COUNT(*) as count, SUM(price) as total_spent FROM orders WHERE user_id = ? GROUP BY type`,
+      [id]
+    );
+    
+    // 获取用户最近订单
+    const [recentOrders] = await connection.query(
+      `SELECT id, type, status, price, created_at FROM orders WHERE user_id = ? ORDER BY created_at DESC LIMIT 10`,
+      [id]
+    );
+    
+    // 获取用户充值记录
+    const [payments] = await connection.query(
+      `SELECT amount, type, status, created_at FROM payments WHERE user_id = ? ORDER BY created_at DESC LIMIT 10`,
+      [id]
+    );
+    
+    connection.release();
+    
+    res.json({
+      code: 0,
+      message: '获取用户详情成功',
+      data: {
+        user,
+        order_stats: orderStats,
+        recent_orders: recentOrders,
+        payment_history: payments
+      }
+    });
+  } catch (err) {
+    console.error('获取用户详情出错:', err);
+    res.status(500).json({
+      code: 500,
+      message: '服务器错误'
+    });
+  }
+});
+
+// 调整用户余额
+router.post('/users/:id/adjust-balance', authenticateAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { amount, type, remark } = req.body;
+    
+    if (!amount || !type || !['add', 'subtract'].includes(type)) {
+      return res.status(400).json({
+        code: 400,
+        message: '参数错误'
+      });
+    }
+    
+    const connection = await pool.getConnection();
+    
+    // 获取当前余额
+    const [users] = await connection.query(
+      `SELECT balance FROM users WHERE id = ?`,
+      [id]
+    );
+    
+    if (users.length === 0) {
+      connection.release();
+      return res.status(404).json({
+        code: 404,
+        message: '用户不存在'
+      });
+    }
+    
+    const currentBalance = users[0].balance;
+    const newBalance = type === 'add' 
+      ? currentBalance + amount 
+      : Math.max(0, currentBalance - amount);
+    
+    // 更新余额
+    await connection.query(
+      `UPDATE users SET balance = ? WHERE id = ?`,
+      [newBalance, id]
+    );
+    
+    // 记录到支付表（管理员操作）
+    await connection.query(
+      `INSERT INTO payments (user_id, amount, type, status, remark) VALUES (?, ?, ?, 'completed', ?)`,
+      [id, amount, type === 'add' ? 'recharge' : 'consume', `管理员操作: ${remark || ''}`]
+    );
+    
+    connection.release();
+    
+    res.json({
+      code: 0,
+      message: '余额调整成功',
+      data: {
+        previous_balance: currentBalance,
+        new_balance: newBalance,
+        adjustment: amount
+      }
+    });
+  } catch (err) {
+    console.error('调整余额出错:', err);
+    res.status(500).json({
+      code: 500,
+      message: '服务器错误'
+    });
+  }
+});
+
+// 配置管理 - 获取价格配置
+router.get('/config/prices', authenticateAdmin, async (req, res) => {
+  try {
+    // 暂时返回硬编码的价格（可以扩展为数据库配置）
+    res.json({
+      code: 0,
+      message: '获取价格配置成功',
+      data: {
+        sms: 2.99,
+        call: 19.00,
+        human: 29.00
+      }
+    });
+  } catch (err) {
+    console.error('获取价格配置出错:', err);
+    res.status(500).json({
+      code: 500,
+      message: '服务器错误'
+    });
+  }
+});
+
+// 导出数据
+router.get('/export/orders', authenticateAdmin, async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+    
+    const connection = await pool.getConnection();
+    
+    let query = `SELECT o.*, u.phone, u.nickname FROM orders o 
+                 LEFT JOIN users u ON o.user_id = u.id WHERE 1=1`;
+    const params = [];
+    
+    if (startDate) {
+      query += ' AND o.created_at >= ?';
+      params.push(startDate);
+    }
+    
+    if (endDate) {
+      query += ' AND o.created_at <= ?';
+      params.push(endDate);
+    }
+    
+    query += ' ORDER BY o.created_at DESC';
+    
+    const [orders] = await connection.query(query, params);
+    
+    connection.release();
+    
+    // 返回JSON格式，前端可下载为CSV
+    res.json({
+      code: 0,
+      message: '导出成功',
+      data: orders
+    });
+  } catch (err) {
+    console.error('导出数据出错:', err);
+    res.status(500).json({
+      code: 500,
+      message: '服务器错误'
+    });
+  }
 });
 
 module.exports = router;

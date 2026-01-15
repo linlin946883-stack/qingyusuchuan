@@ -63,10 +63,10 @@ function sanitizeRequestBody(req, res, next) {
 }
 
 /**
- * 简单的速率限制（内存版）
- * 生产环境建议使用 Redis
+ * 速率限制（内存版）
+ * 适用于开发环境和单机部署
  */
-class RateLimiter {
+class MemoryRateLimiter {
   constructor(options = {}) {
     this.windowMs = options.windowMs || 60000; // 1分钟
     this.maxRequests = options.maxRequests || 100;
@@ -122,6 +122,83 @@ class RateLimiter {
     };
   }
 }
+
+/**
+ * 速率限制（Redis 版）
+ * 适用于生产环境和分布式部署
+ * 需要安装: npm install redis
+ */
+class RedisRateLimiter {
+  constructor(options = {}) {
+    this.windowMs = options.windowMs || 60000; // 1分钟
+    this.maxRequests = options.maxRequests || 100;
+    this.redisClient = options.redisClient;
+    this.prefix = options.prefix || 'rate_limit:';
+    
+    if (!this.redisClient) {
+      throw new Error('RedisRateLimiter 需要提供 redisClient 实例');
+    }
+  }
+  
+  middleware() {
+    return async (req, res, next) => {
+      const identifier = req.ip || req.connection.remoteAddress;
+      const key = `${this.prefix}${identifier}`;
+      const now = Date.now();
+      const windowStart = now - this.windowMs;
+      
+      try {
+        // 使用 Redis Sorted Set 存储请求时间戳
+        // 1. 移除过期的记录
+        await this.redisClient.zRemRangeByScore(key, 0, windowStart);
+        
+        // 2. 获取当前窗口内的请求数
+        const count = await this.redisClient.zCard(key);
+        
+        if (count >= this.maxRequests) {
+          return res.status(429).json({
+            code: 429,
+            message: '请求过于频繁，请稍后再试'
+          });
+        }
+        
+        // 3. 添加当前请求
+        await this.redisClient.zAdd(key, {
+          score: now,
+          value: `${now}_${Math.random()}`
+        });
+        
+        // 4. 设置 key 过期时间（防止内存泄漏）
+        await this.redisClient.expire(key, Math.ceil(this.windowMs / 1000));
+        
+        next();
+      } catch (error) {
+        console.error('Redis 速率限制失败:', error);
+        // Redis 失败时降级到允许请求（避免服务不可用）
+        next();
+      }
+    };
+  }
+}
+
+/**
+ * 速率限制器工厂函数
+ * 根据环境变量自动选择内存或 Redis 实现
+ */
+function createRateLimiter(options = {}) {
+  const useRedis = process.env.USE_REDIS_RATE_LIMIT === 'true';
+  
+  if (useRedis && options.redisClient) {
+    console.log('✓ 使用 Redis 速率限制');
+    return new RedisRateLimiter(options);
+  } else {
+    console.log('✓ 使用内存速率限制（开发环境）');
+    return new MemoryRateLimiter(options);
+  }
+}
+
+// 向后兼容的别名
+const RateLimiter = MemoryRateLimiter;
 
 /**
  * 安全响应头中间件
@@ -229,7 +306,10 @@ module.exports = {
   sanitizeInput,
   sanitizeObject,
   sanitizeRequestBody,
-  RateLimiter,
+  RateLimiter,  // 向后兼容
+  MemoryRateLimiter,
+  RedisRateLimiter,
+  createRateLimiter,
   securityHeaders,
   validateNoSqlInjection,
   CSRFProtection
