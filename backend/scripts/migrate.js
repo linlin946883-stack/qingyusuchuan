@@ -118,7 +118,10 @@ const executeSQL = async () => {
 
     // 插入预设文案
     await connection.query(`
-      INSERT IGNORE INTO presets (type, category, title, content) VALUES
+      INSERT IGNORE INTO presets (type, category, content) VALUES
+      ('sms', 'business', '尊敬的客户，我们是清语速川公司...'),
+      ('sms', 'notification', '您的验证码为: 123456'),
+      ('sms', 'reminder', '您有一个待处理的订单，请及时确认')
     `);
     console.log('✓ 预设文案插入成功');
 

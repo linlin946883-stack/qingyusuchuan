@@ -51,8 +51,11 @@ const authLimiter = createRateLimiter({
   redisClient: redisClient
 });
 
-// 创建 CSRF 保护实例
-const csrfProtection = new CSRFProtection();
+// 创建 CSRF 保护实例（传入 Redis 客户端以支持多实例部署）
+const csrfProtection = new CSRFProtection({ 
+  redisClient: redisClient,
+  tokenExpiry: 30 * 60 * 1000 // 30分钟
+});
 
 // 安全中间件（应用到所有路由）
 app.use(securityHeaders);
@@ -62,9 +65,31 @@ app.use(express.urlencoded({ limit: '10mb', extended: true }));
 // 清理用户输入
 app.use(sanitizeRequestBody);
 
-// CORS 配置 - 允许多个来源
+// CORS 配置 - 动态允许来源
+const allowedOrigins = [
+  'http://localhost:8000',
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'https://i.lov2u.cn',
+  'https://min.lov2u.cn',
+  'https://lov2u.cn',
+  'http://i.lov2u.cn',
+  'http://min.lov2u.cn',
+  'http://lov2u.cn'
+];
+
 app.use(cors({
-  origin: ['http://localhost:8000', 'http://localhost:5173', 'http://localhost:3000'],
+  origin: (origin, callback) => {
+    // 允许没有 origin 的请求（如移动应用、Postman等）
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.log(`⚠ CORS阻止来自未授权来源的请求: ${origin}`);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token']

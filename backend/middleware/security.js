@@ -244,32 +244,73 @@ function validateNoSqlInjection(input) {
  * CSRF Token 生成和验证
  */
 class CSRFProtection {
-  constructor() {
+  constructor(options = {}) {
     this.tokens = new Map();
+    this.redisClient = options.redisClient || null;
+    this.tokenExpiry = options.tokenExpiry || 30 * 60 * 1000; // 30分钟
+    this.redisPrefix = 'csrf:';
     
-    // 定期清理过期 token（30分钟）
-    setInterval(() => {
-      const now = Date.now();
-      for (const [token, timestamp] of this.tokens.entries()) {
-        if (now - timestamp > 30 * 60 * 1000) {
-          this.tokens.delete(token);
+    // 只在使用内存存储时定期清理过期 token
+    if (!this.redisClient) {
+      setInterval(() => {
+        const now = Date.now();
+        for (const [token, timestamp] of this.tokens.entries()) {
+          if (now - timestamp > this.tokenExpiry) {
+            this.tokens.delete(token);
+          }
         }
-      }
-    }, 5 * 60 * 1000);
+      }, 5 * 60 * 1000);
+      
+      console.log('⚠ CSRF 使用内存存储（不适合多实例部署）');
+    } else {
+      console.log('✓ CSRF 使用 Redis 存储');
+    }
   }
   
   generateToken() {
     const token = require('crypto').randomBytes(32).toString('hex');
-    this.tokens.set(token, Date.now());
     return token;
   }
   
-  validateToken(token) {
-    return this.tokens.has(token);
+  async storeToken(token) {
+    if (this.redisClient) {
+      try {
+        // 使用 Redis 存储，设置过期时间
+        await this.redisClient.set(
+          `${this.redisPrefix}${token}`,
+          Date.now().toString(),
+          { EX: Math.floor(this.tokenExpiry / 1000) }
+        );
+        return true;
+      } catch (error) {
+        console.error('Redis 存储 CSRF token 失败，降级到内存:', error.message);
+        this.tokens.set(token, Date.now());
+        return true;
+      }
+    } else {
+      this.tokens.set(token, Date.now());
+      return true;
+    }
+  }
+  
+  async validateToken(token) {
+    if (!token) return false;
+    
+    if (this.redisClient) {
+      try {
+        const exists = await this.redisClient.exists(`${this.redisPrefix}${token}`);
+        return exists === 1;
+      } catch (error) {
+        console.error('Redis 验证 CSRF token 失败，降级到内存:', error.message);
+        return this.tokens.has(token);
+      }
+    } else {
+      return this.tokens.has(token);
+    }
   }
   
   middleware() {
-    return (req, res, next) => {
+    return async (req, res, next) => {
       // GET、HEAD、OPTIONS 请求不需要 CSRF token
       if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) {
         return next();
@@ -278,7 +319,19 @@ class CSRFProtection {
       // 从请求头或请求体获取 token
       const token = req.headers['x-csrf-token'] || req.body._csrf;
       
-      if (!token || !this.validateToken(token)) {
+      if (!token) {
+        console.warn(`CSRF验证失败 [${req.method} ${req.path}]: 缺少token`);
+        return res.status(403).json({
+          code: 403,
+          message: 'Invalid CSRF token'
+        });
+      }
+      
+      const isValid = await this.validateToken(token);
+      
+      if (!isValid) {
+        console.warn(`CSRF验证失败 [${req.method} ${req.path}]: token无效或已过期`);
+        console.warn(`Token: ${token.substring(0, 16)}...`);
         return res.status(403).json({
           code: 403,
           message: 'Invalid CSRF token'
@@ -291,12 +344,22 @@ class CSRFProtection {
   
   // 生成 token 的路由
   getTokenEndpoint() {
-    return (req, res) => {
-      const token = this.generateToken();
-      res.json({
-        code: 0,
-        data: { csrfToken: token }
-      });
+    return async (req, res) => {
+      try {
+        const token = this.generateToken();
+        await this.storeToken(token);
+        console.log(`✓ 生成新CSRF Token: ${token.substring(0, 16)}...`);
+        res.json({
+          code: 0,
+          data: { csrfToken: token }
+        });
+      } catch (error) {
+        console.error('生成 CSRF Token 失败:', error);
+        res.status(500).json({
+          code: 500,
+          message: '生成CSRF Token失败'
+        });
+      }
     };
   }
 }

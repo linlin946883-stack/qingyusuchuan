@@ -47,10 +47,25 @@ class APIClient {
    */
   async _fetchCSRFToken() {
     try {
-      const response = await fetch(`${this.baseURL}/csrf-token`);
+      const response = await fetch(`${this.baseURL}/csrf-token`, {
+        method: 'GET',
+        credentials: 'include', // 重要：携带cookies
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
       
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        // 提供详细的错误信息
+        let errorMsg = `HTTP ${response.status}: ${response.statusText}`;
+        
+        if (response.status === 0) {
+          errorMsg = 'CORS错误：无法连接到API服务器，请检查服务器配置';
+        } else if (response.status === 403) {
+          errorMsg = 'CORS或安全策略错误：请确保当前域名在服务器允许列表中';
+        }
+        
+        throw new Error(errorMsg);
       }
       
       const data = await response.json();
@@ -65,6 +80,15 @@ class APIClient {
       }
     } catch (error) {
       console.error('获取 CSRF Token 失败:', error);
+      
+      // 如果是网络错误，提供更详细的提示
+      if (error.name === 'TypeError' && error.message.includes('fetch')) {
+        console.error('网络错误提示：');
+        console.error('1. 检查API服务器是否运行');
+        console.error('2. 检查CORS配置是否包含当前域名:', window.location.origin);
+        console.error('3. API地址:', this.baseURL);
+      }
+      
       throw error;
     }
   }
@@ -94,9 +118,11 @@ class APIClient {
     if (stored) {
       this.csrfToken = stored;
       this.isInitialized = true;
+      console.log('✓ 从 sessionStorage 恢复 CSRF Token:', stored.substring(0, 16) + '...');
       return stored;
     }
     
+    console.warn('⚠ CSRF Token 不可用，可能需要初始化');
     return null;
   }
 
@@ -162,6 +188,13 @@ class APIClient {
       const csrfToken = this.getCSRFToken();
       if (csrfToken && !options.skipCSRF) {
         headers['X-CSRF-Token'] = csrfToken;
+        console.log(`→ [${method}] 添加CSRF Token: ${csrfToken.substring(0, 16)}...`);
+      } else {
+        console.warn(`⚠ [${method}] CSRF Token不可用:`, { 
+          hasToken: !!csrfToken, 
+          skipCSRF: options.skipCSRF,
+          isInitialized: this.isInitialized
+        });
       }
     }
 
@@ -257,6 +290,7 @@ class APIClient {
     const fetchOptions = {
       method: method,
       headers,
+      credentials: 'include', // 重要：支持跨域携带cookies
       ...options
     };
 
@@ -273,6 +307,16 @@ class APIClient {
       return await this._handleResponse(response, options);
     } catch (error) {
       console.error('请求失败:', error);
+      
+      // 提供网络错误的详细信息
+      if (error.name === 'TypeError') {
+        console.error('可能的原因：');
+        console.error('1. CORS配置错误');
+        console.error('2. API服务器未运行');
+        console.error('3. 网络连接问题');
+        console.error('请求地址:', url);
+      }
+      
       throw error;
     }
   }
