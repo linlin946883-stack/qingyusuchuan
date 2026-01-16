@@ -13,15 +13,9 @@ const ENV = {
   
   // 生产环境配置
   production: {
-    API_URL: 'https://api.lov2u.cn/api',  // 修改为你的后端地址
-    FRONTEND_URL: 'https://yourdomain.com'       // 修改为你的前端地址
+    API_URL: 'https://i.lov2u.cn/api',  // 修改为你的后端地址
+    FRONTEND_URL: 'https://i.lov2u.cn'         // 修改为你的前端地址
   },
-  
-  // 测试环境配置
-  staging: {
-    API_URL: 'https://api-staging.yourdomain.com/api',
-    FRONTEND_URL: 'https://staging.yourdomain.com'
-  }
 };
 
 // 自动检测环境（基于域名）

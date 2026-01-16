@@ -67,15 +67,9 @@ app.use(sanitizeRequestBody);
 
 // CORS 配置 - 动态允许来源
 const allowedOrigins = [
-  'http://localhost:8000',
-  'http://localhost:5173',
-  'http://localhost:3000',
   'https://i.lov2u.cn',
   'https://min.lov2u.cn',
   'https://lov2u.cn',
-  'http://i.lov2u.cn',
-  'http://min.lov2u.cn',
-  'http://lov2u.cn'
 ];
 
 app.use(cors({

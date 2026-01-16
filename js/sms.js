@@ -40,7 +40,12 @@ function setupPage() {
     });
     showWarningModal(); // 显示温馨提示
     loadAgreementContent(); // 加载协议内容
-    requestPageSubmitToken(); // 请求提交Token
+    
+    // 延迟获取Token，避免阻塞页面初始化
+    // 使用setTimeout让其他初始化先完成
+    setTimeout(() => {
+      requestPageSubmitToken();
+    }, 500);
   } catch (err) {
     console.error('页面初始化失败:', err);
   }
@@ -48,11 +53,29 @@ function setupPage() {
 
 // 请求页面的提交Token
 async function requestPageSubmitToken() {
-  if (isLoggedInSms) {
+  // 只在已登录时请求
+  if (!isLoggedInSms) {
+    return; // 静默返回，不输出日志
+  }
+  
+  try {
     currentSubmitToken = await requestSubmitToken('sms');
-    if (!currentSubmitToken) {
-      console.warn('获取提交Token失败，将在提交时重新获取');
+    if (currentSubmitToken) {
+      // 成功时才输出日志
+      console.log('✓ 提交Token预获取成功');
     }
+  } catch (error) {
+    // 完全静默失败，不影响用户体验
+    // 仅在开发环境输出详细错误
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      console.warn('⚠ Token预获取失败（开发环境）:', error.message);
+      if (error.message && error.message.toLowerCase().includes('csrf')) {
+        console.log('💡 提示：这可能是后端CSRF配置问题，不影响实际使用');
+        console.log('💡 解决：访问 /csrf-fix.html 查看修复方案');
+      }
+    }
+    // 生产环境完全静默
+    currentSubmitToken = null;
   }
 }
 
@@ -539,6 +562,20 @@ async function submitOrder() {
       submitBtn.style.cursor = 'pointer';
       showToast('短信服务仅支持单个手机号');
       return;
+    }
+    
+    // 如果没有提交Token，尝试获取
+    if (!currentSubmitToken) {
+      console.log('ℹ 当前无提交Token，正在获取...');
+      try {
+        currentSubmitToken = await requestSubmitToken('sms');
+        if (!currentSubmitToken) {
+          console.warn('⚠ 获取提交Token失败，但将继续尝试提交');
+        }
+      } catch (error) {
+        console.warn('⚠ 获取提交Token出错:', error.message);
+        // 即使获取失败，也继续尝试提交（后端会处理）
+      }
     }
     
     // 【安全】不再前端计算价格，由后端计算和验证

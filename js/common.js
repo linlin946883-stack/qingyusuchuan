@@ -89,9 +89,10 @@ const storage = {
 };
 
 // API 基础URL - 从 config.js 读取
-// 生产环境应该在 config.js 中设置 window.API_BASE_URL
+// 生产环境必须在 config.js 中正确设置 window.API_BASE_URL
 if (!window.API_BASE_URL) {
-  window.API_BASE_URL = 'http://localhost:3000/api';
+  console.error('❌ 错误：API_BASE_URL 未配置！请确保在 config.js 中正确设置');
+  throw new Error('API_BASE_URL configuration missing');
 }
 
 // ==================== Token 管理 ====================
@@ -377,6 +378,11 @@ function generateSubmitToken() {
  * 从服务器获取有效的提交Token
  */
 async function requestSubmitToken(type) {
+  // 检查是否已登录
+  if (!hasToken()) {
+    return null; // 静默返回
+  }
+  
   try {
     const data = await apiClient.post('/orders/submit-token', { type });
     
@@ -386,7 +392,10 @@ async function requestSubmitToken(type) {
     
     return null;
   } catch (error) {
-    console.error('获取提交Token失败:', error);
+    // 静默失败，只在开发环境输出
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      console.warn('Token获取失败（开发）:', error.message);
+    }
     return null;
   }
 }
