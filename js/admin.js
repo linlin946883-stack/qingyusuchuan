@@ -1,8 +1,3 @@
-// 导入依赖
-import './config.js';
-import apiClient from './api-client.js';
-import { showToast } from './common.js';
-
 // ==================== 全局变量 ====================
 // API 基础URL - 生产环境应该设置 window.API_BASE_URL
 const API_BASE_URL = window.API_BASE_URL || 'http://localhost:3000/api';
@@ -167,12 +162,10 @@ async function handleLogin(e) {
 }
 
 function handleLogout() {
-  if (confirm('确定要退出登录吗？')) {
-    localStorage.removeItem('adminToken');
-    adminToken = null;
-    document.getElementById('loginForm').reset();
-    showLoginPage();
-  }
+  localStorage.removeItem('adminToken');
+  adminToken = null;
+  document.getElementById('loginForm').reset();
+  showLoginPage();
 }
 
 function showLoginPage() {
@@ -429,6 +422,13 @@ async function showOrderDetail(orderId) {
       const body = document.getElementById('orderDetailBody');
       const price = parseFloat(order.price) || 0;
       
+      const escapeHtml = (str) => {
+        if (!str) return '-';
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+      };
+      
       body.innerHTML = `
         <div style="display: grid; gap: 16px;">
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
@@ -454,17 +454,17 @@ async function showOrderDetail(orderId) {
             </div>
             <div>
               <div style="color: #999; font-size: 12px; margin-bottom: 4px;">联系电话</div>
-              <div style="font-weight: 600;">${order.contact_phone || '-'}</div>
+              <div style="font-weight: 600;">${escapeHtml(order.contact_phone)}</div>
             </div>
           </div>
           <div>
             <div style="color: #999; font-size: 12px; margin-bottom: 4px;">联系方式</div>
-            <div style="font-weight: 600;">${order.contact_method || '-'}</div>
+            <div style="font-weight: 600;">${escapeHtml(order.contact_method)}</div>
           </div>
           <div>
             <div style="color: #999; font-size: 12px; margin-bottom: 4px;">服务内容</div>
             <div style="background-color: #f9fafb; padding: 12px; border-radius: 6px; line-height: 1.6; word-break: break-all;">
-              ${order.content || '（无内容）'}
+              ${escapeHtml(order.content) || '（无内容）'}
             </div>
           </div>
           ${order.scheduled_time ? `
@@ -589,13 +589,20 @@ function renderUsersTable(users) {
     return;
   }
   
+  const escapeHtml = (str) => {
+    if (!str) return '-';
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  };
+  
   tbody.innerHTML = users.map(user => {
     const totalSpent = parseFloat(user.total_spent) || 0;
     return `
       <tr>
         <td><strong>#${user.id}</strong></td>
-        <td>${user.phone || '-'}</td>
-        <td>${user.nickname || '未设置'}</td>
+        <td>${escapeHtml(user.phone)}</td>
+        <td>${escapeHtml(user.nickname) || '未设置'}</td>
         <td>¥${totalSpent.toFixed(2)}</td>
         <td>${formatDate(user.created_at)}</td>
         <td>
@@ -901,9 +908,3 @@ function closeModal(modalId) {
     modal.classList.remove('active');
   }
 }
-
-// 将需要在 HTML 中使用的函数暴露到全局作用域
-window.showOrderDetail = showOrderDetail;
-window.showUserDetail = showUserDetail;
-window.updateOrderStatus = updateOrderStatus;
-window.closeModal = closeModal;

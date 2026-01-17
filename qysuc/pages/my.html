@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的 - 思语工坊</title>
+    <link rel="stylesheet" href="../css/common.css">
+    <link rel="stylesheet" href="../css/my.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- 顶部导航 -->
+        <div class="app-header">
+            <button class="back-btn" onclick="window.history.back()">
+                <span class="icon">←</span>
+            </button>
+            <div class="header-spacer"></div>
+        </div>
+
+        <!-- 主容器 -->
+        <div class="page-my">
+            <!-- 账号信息区 -->
+            <div class="account-section-my">
+                <div class="account-card-my" onclick="handleLoginClick()">
+                    <div class="account-avatar-my">👤</div>
+                    <div class="account-info-my">
+                        <div class="account-name-my" id="accountName">未登录</div>
+                        <div class="account-phone-my" id="accountPhone">点击登入账号</div>
+                    </div>
+                    <div class="account-arrow-my">›</div>
+                </div>
+            </div>
+
+            
+
+            <!-- 其他功能区 -->
+            <div class="records-section-my">
+                <div class="section-title-my">其他功能</div>
+                
+                <!-- 联系客服 -->
+                <div class="record-item-my" onclick="contactServiceMy()">
+                    <div class="record-icon-my">�</div>
+                    <div class="record-content-my">
+                        <div class="record-title-my">联系客服</div>
+                        <div class="record-desc-my">遇到问题？联系我们</div>
+                    </div>
+                    <div class="arrow-my">→</div>
+                </div>
+            </div>
+
+            <!-- 退出登录按钮 -->
+            <div class="footer-my">
+                <button class="logout-btn-my" id="logoutBtn" onclick="handleLogoutMy()" style="display: none;">
+                    退出登录
+                </button>
+            </div>
+
+            <!-- 底部导航栏 -->
+            <div class="bottom-nav-my">
+                <div class="nav-item-my" onclick="goHomeMy()">
+                    <div class="nav-icon-my">🏠</div>
+                    <div class="nav-label-my">首页</div>
+                </div>
+                <div class="nav-item-my active">
+                    <div class="nav-icon-my">👤</div>
+                    <div class="nav-label-my">我的</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="../js/common.js"></script>
+    <script src="../js/my.js"></script>
+</body>
+</html>

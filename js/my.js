@@ -1,20 +1,3 @@
-// 导入依赖
-import './config.js';
-import './api-client.js';
-import {
-  hasToken,
-  getUserInfo,
-  userLogout,
-  getOrders,
-  getOrderDetail,
-  formatDate,
-  truncateContent,
-  showLoading,
-  hideLoading,
-  showToast,
-  verifyToken
-} from './common.js';
-
 // 状态管理
 let isLoggedInMy = false;
 let userNameMy = '';

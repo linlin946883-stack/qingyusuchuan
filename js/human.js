@@ -1,21 +1,3 @@
-// 导入依赖
-import './config.js';
-import './api-client.js';
-import {
-  disableBodyScroll,
-  enableBodyScroll,
-  hasToken,
-  getUserInfo,
-  requestSubmitToken,
-  createOrder,
-  getPresets,
-  getPrices,
-  showLoading,
-  hideLoading,
-  showToast
-} from './common.js';
-import TimePicker from './picker.js';
-
 let contactMethods = ["手机短信", "微信", "QQ", "抖音", "快手", "小红书", "其他平台"];
 let selectedContactMethod = '';
 let selectedDateTime = '';

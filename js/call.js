@@ -1,17 +1,3 @@
-// 导入依赖
-import './config.js';
-import './api-client.js';
-import { 
-  disableBodyScroll, 
-  enableBodyScroll, 
-  hasToken, 
-  getUserInfo, 
-  requestSubmitToken,
-  createOrder,
-  getPrices,
-  showToast
-} from './common.js';
-
 let isLoggedInCall = false;
 let currentPrices = { sms: 2.99, call: 19.00, human: 25.00 }; // 默认价格
 let isSubmitting = false; // 防止重复提交标记

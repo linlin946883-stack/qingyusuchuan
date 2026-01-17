@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>祝福短信 - 思语工坊</title>
+  <link rel="stylesheet" href="../css/common.css">
+  <link rel="stylesheet" href="../css/sms.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- 顶部导航 -->
+    <div class="app-header">
+      <button class="back-btn" onclick="window.history.back()">
+        <span class="icon">←</span>
+      </button>
+      <div class="header-spacer"></div>
+    </div>
+
+    <div class="page">
+    
+    <!-- 顶部介绍卡片 -->
+    <div class="hero-card">
+      <div class="hero-icon">💌</div>
+      <div class="hero-title">祝福短信</div>
+      <div class="hero-desc">为朋友亲人送去温暖的祝福和问候</div>
+      <div class="hero-tags">
+        <span class="tag">✍️ 精心撰写</span>
+        <span class="tag">❤️ 情感传递</span>
+        <span class="tag">📱 短信送达</span>
+      </div>
+    </div>
+
+    <!-- 祝福短信表单 -->
+    <div class="sms-form-container">
+      <form id="smsForm" class="sms-form">
+        <div class="form-group">
+          <label for="occasion">祝福场景</label>
+          <select id="occasion" name="occasion" required>
+            <option value="">选择祝福场景</option>
+            <option value="birthday">🎂 生日祝福</option>
+            <option value="holiday">🎄 节日问候</option>
+            <option value="encouragement">💪 加油鼓励</option>
+            <option value="thank">🙏 感谢祝福</option>
+            <option value="other">✨ 其他</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="message">祝福内容</label>
+          <textarea id="message" name="message" placeholder="请输入你的祝福内容（1-160个字）" maxlength="160" required></textarea>
+          <div class="char-count">
+            <span id="charCount">0</span>/160
+          </div>
+        </div>
+
+        <button type="submit" class="submit-btn">生成祝福</button>
+      </form>
+    </div>
+
+    </div>
+
+  </div>
+
+  <script src="../js/common.js"></script>
+  <script src="../js/sms.js"></script>
+</body>
+</html>

@@ -1,27 +1,27 @@
-// 导入依赖
-import './config.js';
-import './api-client.js';
-import {
-  setToken,
-  setUserInfo,
-  userLoginPassword,
-  userRegister,
-  checkPhoneExists,
-  showToast
-} from './common.js';
-
 document.addEventListener('DOMContentLoaded', () => {
+  // 手机号检查表单
+  const phoneCheckForm = document.getElementById('phoneCheckForm');
   const phoneInput = document.getElementById('phoneInput');
   const phoneError = document.getElementById('phoneError');
-  const loginFields = document.getElementById('loginFields');
-  const registerFields = document.getElementById('registerFields');
+  const phoneCheckBtn = document.getElementById('phoneCheckBtn');
+
+  // 登录表单
+  const loginForm = document.getElementById('loginForm');
+  const loginPhoneInput = document.getElementById('loginPhoneInput');
+  const loginPhoneError = document.getElementById('loginPhoneError');
   const loginPassword = document.getElementById('loginPassword');
   const loginPasswordError = document.getElementById('loginPasswordError');
+  const loginBtn = document.getElementById('loginBtn');
+
+  // 注册表单
+  const registerForm = document.getElementById('registerForm');
+  const registerPhoneInput = document.getElementById('registerPhoneInput');
+  const registerPhoneError = document.getElementById('registerPhoneError');
   const registerVerifyCode = document.getElementById('registerVerifyCode');
   const getVerifyCodeBtn = document.getElementById('getVerifyCodeBtn');
   const registerPassword = document.getElementById('registerPassword');
   const registerPasswordError = document.getElementById('registerPasswordError');
-  const actionBtn = document.getElementById('actionBtn');
+  const registerBtn = document.getElementById('registerBtn');
 
   const PHONE_REGEX = /^1[3-9]\d{9}$/;
   const VERIFY_CODE_DURATION = 60;
@@ -32,12 +32,14 @@ document.addEventListener('DOMContentLoaded', () => {
     mode: null,
     isChecking: false,
     lastPhoneChecked: '',
-    lastExistsResult: null
+    lastExistsResult: null,
+    currentPhone: ''
   };
 
   const urlParams = new URLSearchParams(window.location.search);
   const returnUrlParam = urlParams.get('return');
 
+  // 手机号输入事件
   phoneInput.addEventListener('input', () => {
     const sanitized = phoneInput.value.replace(/\D/g, '').slice(0, 11);
     if (phoneInput.value !== sanitized) {
@@ -46,9 +48,25 @@ document.addEventListener('DOMContentLoaded', () => {
     handlePhoneChange();
   });
 
-  actionBtn.addEventListener('click', (event) => {
+  // 手机号检查表单提交
+  phoneCheckForm.addEventListener('submit', (event) => {
     event.preventDefault();
-    submitAction();
+    const phone = phoneInput.value;
+    if (PHONE_REGEX.test(phone)) {
+      triggerPhoneCheckNow(phone);
+    }
+  });
+
+  // 登录表单提交
+  loginForm.addEventListener('submit', (event) => {
+    event.preventDefault();
+    handleLogin();
+  });
+
+  // 注册表单提交
+  registerForm.addEventListener('submit', (event) => {
+    event.preventDefault();
+    handleRegister();
   });
 
   getVerifyCodeBtn.addEventListener('click', (event) => {
@@ -129,22 +147,36 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function enterLoginMode() {
     state.mode = 'login';
-    loginFields.classList.remove('hidden');
-    registerFields.classList.add('hidden');
+    state.currentPhone = phoneInput.value;
+    
+    // 隐藏手机号检查表单，显示登录表单
+    phoneCheckForm.classList.add('hidden');
+    loginForm.classList.remove('hidden');
+    registerForm.classList.add('hidden');
+    
+    // 预填手机号
+    loginPhoneInput.value = state.currentPhone;
     loginPassword.value = '';
     loginPasswordError.textContent = '';
-    setActionState(false, '立即登录');
+    loginPhoneError.textContent = '';
   }
 
   function enterRegisterMode() {
     state.mode = 'register';
-    registerFields.classList.remove('hidden');
-    loginFields.classList.add('hidden');
+    state.currentPhone = phoneInput.value;
+    
+    // 隐藏手机号检查表单，显示注册表单
+    phoneCheckForm.classList.add('hidden');
+    loginForm.classList.add('hidden');
+    registerForm.classList.remove('hidden');
+    
+    // 预填手机号
+    registerPhoneInput.value = state.currentPhone;
     resetVerifyCodeState();
     registerVerifyCode.value = '';
     registerPassword.value = '';
     registerPasswordError.textContent = '';
-    setActionState(false, '立即注册');
+    registerPhoneError.textContent = '';
   }
 
   function resetDynamicFields(clearMode = true) {
@@ -152,9 +184,13 @@ document.addEventListener('DOMContentLoaded', () => {
       state.mode = null;
       state.lastPhoneChecked = '';
       state.lastExistsResult = null;
+      state.currentPhone = '';
     }
-    loginFields.classList.add('hidden');
-    registerFields.classList.add('hidden');
+    
+    // 显示手机号检查表单，隐藏其他表单
+    phoneCheckForm.classList.remove('hidden');
+    loginForm.classList.add('hidden');
+    registerForm.classList.add('hidden');
     setActionState(true, '请输入手机号');
     resetVerifyCodeState();
   }
@@ -168,9 +204,9 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function setActionState(disabled, text) {
-    actionBtn.disabled = disabled;
+    phoneCheckBtn.disabled = disabled;
     if (text) {
-      actionBtn.textContent = text;
+      phoneCheckBtn.textContent = text;
     }
   }
 
@@ -185,11 +221,14 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function handleGetVerifyCode() {
-    const phone = phoneInput.value;
+    const phone = registerPhoneInput.value.trim();
     
     if (!PHONE_REGEX.test(phone)) {
+      registerPhoneError.textContent = '手机号格式不正确';
       return;
     }
+
+    registerPhoneError.textContent = '';
 
     // 禁用按钮并开始倒计时
     if (verifyCodeTimer) {
@@ -243,31 +282,29 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  async function submitAction() {
-    const phone = phoneInput.value;
-    if (!PHONE_REGEX.test(phone) || !state.mode || state.isChecking) {
-      return;
-    }
-
-    if (state.mode === 'login') {
-      await handleLogin(phone);
-    } else {
-      await handleRegister(phone);
-    }
-  }
-
-  async function handleLogin(phone) {
+  async function handleLogin() {
+    const phone = loginPhoneInput.value.trim();
     const password = loginPassword.value.trim();
     loginPasswordError.textContent = '';
+    loginPhoneError.textContent = '';
+
+    if (!PHONE_REGEX.test(phone)) {
+      loginPhoneError.textContent = '手机号格式不正确';
+      return;
+    }
 
     if (!password) {
       loginPasswordError.textContent = '请输入密码';
       return;
     }
 
-    setActionState(true, '登录中...');
+    loginBtn.disabled = true;
+    loginBtn.textContent = '登录中...';
+    
     const result = await userLoginPassword(phone, password);
-    setActionState(false, '立即登录');
+    
+    loginBtn.disabled = false;
+    loginBtn.textContent = '登录';
 
     if (result.code === 0) {
       redirectAfterAuth();
@@ -276,12 +313,19 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  async function handleRegister(phone) {
-    let valid = true;
+  async function handleRegister() {
+    const phone = registerPhoneInput.value.trim();
     const verifyCode = registerVerifyCode.value.trim();
     const password = registerPassword.value.trim();
+    let valid = true;
 
     registerPasswordError.textContent = '';
+    registerPhoneError.textContent = '';
+
+    if (!PHONE_REGEX.test(phone)) {
+      registerPhoneError.textContent = '手机号格式不正确';
+      valid = false;
+    }
 
     if (!verifyCode) {
       valid = false;
@@ -296,10 +340,14 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    setActionState(true, '注册中...');
+    registerBtn.disabled = true;
+    registerBtn.textContent = '注册中...';
+    
     // 传递验证码参数：userRegister(username, password, phone, verifyCode)
     const result = await userRegister(phone, password, phone, verifyCode);
-    setActionState(false, '立即注册');
+    
+    registerBtn.disabled = false;
+    registerBtn.textContent = '注册';
 
     if (result.code === 0) {
       showToast('注册成功，已自动登录');

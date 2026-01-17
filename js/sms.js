@@ -1,23 +1,3 @@
-// 导入依赖
-import './config.js';
-import './api-client.js';
-import './wechat-pay.js';
-// wechat-pay.js 已在 HTML 中通过 <script> 标签加载，无需重复导入
-import {
-  disableBodyScroll,
-  enableBodyScroll,
-  hasToken,
-  getUserInfo,
-  requestSubmitToken,
-  createOrder,
-  getPresets,
-  getPrices,
-  showLoading,
-  hideLoading,
-  showToast
-} from './common.js';
-import TimePicker from './picker.js';
-
 let selectedDateTime = '';
 let presetCategories = {};
 let currentCategory = null;
@@ -60,21 +40,8 @@ async function requestPageSubmitToken() {
   
   try {
     currentSubmitToken = await requestSubmitToken('sms');
-    if (currentSubmitToken) {
-      // 成功时才输出日志
-      console.log('✓ 提交Token预获取成功');
-    }
   } catch (error) {
-    // 完全静默失败，不影响用户体验
-    // 仅在开发环境输出详细错误
-    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-      console.warn('⚠ Token预获取失败（开发环境）:', error.message);
-      if (error.message && error.message.toLowerCase().includes('csrf')) {
-        console.log('💡 提示：这可能是后端CSRF配置问题，不影响实际使用');
-        console.log('💡 解决：访问 /csrf-fix.html 查看修复方案');
-      }
-    }
-    // 生产环境完全静默
+    // 静默失败，不影响用户体验
     currentSubmitToken = null;
   }
 }
@@ -566,14 +533,9 @@ async function submitOrder() {
     
     // 如果没有提交Token，尝试获取
     if (!currentSubmitToken) {
-      console.log('ℹ 当前无提交Token，正在获取...');
       try {
         currentSubmitToken = await requestSubmitToken('sms');
-        if (!currentSubmitToken) {
-          console.warn('⚠ 获取提交Token失败，但将继续尝试提交');
-        }
       } catch (error) {
-        console.warn('⚠ 获取提交Token出错:', error.message);
         // 即使获取失败，也继续尝试提交（后端会处理）
       }
     }

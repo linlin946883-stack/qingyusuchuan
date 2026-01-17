@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>语音贺卡 - 思语工坊</title>
+    <link rel="stylesheet" href="../css/common.css">
+    <link rel="stylesheet" href="../css/call.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- 顶部导航 -->
+        <div class="app-header">
+            <button class="back-btn" onclick="window.history.back()">
+                <span class="icon">←</span>
+            </button>
+            <h1>语音贺卡</h1>
+            <div class="header-spacer"></div>
+        </div>
+
+        <!-- 语音贺卡内容区域 -->
+        <div class="main-content">
+            <div class="page">
+                <!-- 顶部信息卡片 -->
+                <div class="info-card-compact">
+                    <div class="compact-grid">
+                        <div class="compact-item">
+                            <span class="compact-icon">🎙️</span>
+                            <span class="compact-text">语音录制</span>
+                        </div>
+                        <div class="compact-item">
+                            <span class="compact-icon">✅</span>
+                            <span class="compact-text">内容审核</span>
+                        </div>
+                        <div class="compact-item">
+                            <span class="compact-icon">📬</span>
+                            <span class="compact-text">送达通知</span>
+                        </div>
+                    </div>
+                    <div class="compact-tips">
+                        <div class="tip-row">
+                            <span class="tip-label">⏱️ 处理时间：</span>
+                            <span class="tip-value">24小时内</span>
+                        </div>
+                    </div>
+                    <div class="detail-toggle" id="detailToggle">
+                        <span class="toggle-text" id="toggleText">查看服务详情</span>
+                        <span class="toggle-icon" id="toggleIcon">▼</span>
+                    </div>
+                    <div class="detail-content" id="detailContent" style="display:none;">
+                        <div class="detail-section">
+                            <span class="detail-title">📝 工作流程</span>
+                            <span class="detail-text">上传语音→系统审核→合格发送→送达通知</span>
+                        </div>
+                        <div class="detail-section">
+                            <span class="detail-title">📋 录音须知</span>
+                            <div class="detail-list">
+                                <span class="detail-item">• 支持长度：30-60秒</span>
+                                <span class="detail-item">• 内容要求：积极、向上、合法</span>
+                                <span class="detail-item">• 审核时间：24小时内</span>
+                                <span class="detail-item">• 通过审核后可直接发送</span>
+                            </div>
+                        </div>
+                        <div class="detail-section detail-warning">
+                            <span class="detail-title">ℹ️ 重要提示</span>
+                            <span class="detail-text warning-text">审核通过的贺卡不支持修改</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 贺卡模板展示区域 -->
+
+                <!-- 语音贺卡表单 -->
+                <div class="form-container">
+                    <form id="callForm" class="custom-form">
+                        <div class="form-group">
+                            <label for="callOccasion">贺卡类型</label>
+                            <select id="callOccasion" name="callOccasion" required>
+                                <option value="">选择贺卡类型</option>
+                                <option value="birthday">🎂 生日贺卡</option>
+                                <option value="holiday">🎄 节日祝福</option>
+                                <option value="wedding">💍 婚礼祝贺</option>
+                                <option value="congratulations">🎉 恭贺祝福</option>
+                                <option value="other">✨ 其他</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="callScript">贺卡文案 <span class="optional">(可选)</span></label>
+                            <textarea id="callScript" name="callScript" placeholder="请输入您要录制的贺卡文案（1-500字）" maxlength="500"></textarea>
+                            <div class="char-count">
+                                <span id="callCharCount">0</span>/500
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="callAudio">上传录音 <span class="optional">(可选)</span></label>
+                            <div class="file-upload-wrapper">
+                                <input type="file" id="callAudio" name="callAudio" accept="audio/*" class="file-input">
+                                <label for="callAudio" class="file-upload-btn">📁 选择录音文件</label>
+                                <span class="file-name" id="fileName">未选择文件</span>
+                            </div>
+                        </div>
+
+                        <div class="form-hint">💡 文案或录音至少选择一项提交</div>
+
+                        <button type="submit" class="submit-btn">生成贺卡</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="../js/common.js"></script>
+    <script src="../js/call.js"></script>
+</body>
+</html>

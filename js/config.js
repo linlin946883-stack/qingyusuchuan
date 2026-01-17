@@ -13,8 +13,8 @@ const ENV = {
   
   // 生产环境配置
   production: {
-    API_URL: 'https://i.lov2u.cn/api',  // 修改为你的后端地址
-    FRONTEND_URL: 'https://i.lov2u.cn'         // 修改为你的前端地址
+    API_URL: 'https://lov2u.cn/api',  // 修改为你的后端地址
+    FRONTEND_URL: 'https://lov2u.cn'         // 修改为你的前端地址
   },
 };
 
@@ -44,10 +44,3 @@ window.CURRENT_ENV = currentEnv;
 
 console.log(`✓ 环境: ${currentEnv}`);
 console.log(`✓ API 地址: ${config.API_URL}`);
-
-// 也可以直接导出配置对象
-window.AppConfig = config;
-
-// ES 模块导出
-export { ENV, config as API_CONFIG, currentEnv };
-export default config;

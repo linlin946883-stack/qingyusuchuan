@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>创意贺卡 - 思语工坊</title>
+    <link rel="stylesheet" href="../css/common.css">
+    <link rel="stylesheet" href="../css/human.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- 顶部导航 -->
+        <div class="app-header">
+            <button class="back-btn" onclick="window.history.back()">
+                <span class="icon">←</span>
+            </button>
+            <h1>创意贺卡</h1>
+            <div class="header-spacer"></div>
+        </div>
+
+        <!-- 主容器 -->
+        <div class="main-content">
+          <div class="page">
+            <!-- 顶部介绍卡片 -->
+            <div class="hero-card-human">
+              <div class="hero-icon">🎨</div>
+              <div class="hero-title">创意贺卡设计</div>
+              <div class="hero-desc">为您打造个性化贺卡，传递温暖心意</div>
+              <div class="hero-tags">
+                <span class="tag">✨ 创意设计</span>
+                <span class="tag">❤️ 精心打磨</span>
+                <span class="tag">🎁 高质量</span>
+              </div>
+            </div>
+
+            <!-- 创意贺卡表单 -->
+            <div class="form-container">
+                <form id="humanForm" class="custom-form">
+                    <div class="form-group">
+                        <label for="humanStyle">贺卡风格</label>
+                        <select id="humanStyle" name="humanStyle" required>
+                            <option value="">选择贺卡风格</option>
+                            <option value="modern">🎨 现代简约</option>
+                            <option value="romantic">💕 浪漫唯美</option>
+                            <option value="festive">🎉 喜庆热烈</option>
+                            <option value="elegant">✨ 高端典雅</option>
+                            <option value="custom">🎯 自定义</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="humanContent">贺卡内容</label>
+                        <textarea id="humanContent" name="humanContent" placeholder="请描述您想要的贺卡内容和特殊要求（1-300字）" maxlength="300" required></textarea>
+                        <div class="char-count">
+                            <span id="humanCharCount">0</span>/300
+                        </div>
+                    </div>
+
+                    <button type="submit" class="submit-btn">提交设计需求</button>
+                </form>
+            </div>
+          </div>
+        </div>
+    </div>
+
+    <script src="../js/common.js"></script>
+    <script src="../js/picker.js"></script>
+    <script src="../js/human.js"></script>
+</body>
+</html>

@@ -223,20 +223,21 @@
                 </div>
 
                 <div class="auth-flow">
-                    <div class="form-group">
-                        <label class="form-label" style="text-align: center; margin-bottom: 16px;">登录/注册</label>
-                        <input 
-                            type="tel" 
-                            id="phoneInput" 
-                            class="form-input" 
-                            placeholder="请输入11位手机号码"
-                            maxlength="11"
-                            inputmode="numeric"
-                        >
-                    <div id="phoneError" class="error-text"></div>
-                    </div>
-
-                    <div id="loginFields" class="dynamic-fields hidden">
+                    <!-- 登录表单 -->
+                    <form id="loginForm" autocomplete="on" class="hidden">
+                        <div class="form-group">
+                            <label class="form-label" style="text-align: center; margin-bottom: 16px;">登录</label>
+                            <input 
+                                type="tel" 
+                                id="loginPhoneInput" 
+                                class="form-input" 
+                                placeholder="请输入11位手机号码"
+                                maxlength="11"
+                                inputmode="numeric"
+                                autocomplete="tel"
+                            >
+                            <div id="loginPhoneError" class="error-text"></div>
+                        </div>
                         <div class="form-group">
                             <input 
                                 type="password" 
@@ -247,9 +248,24 @@
                             >
                             <span id="loginPasswordError" class="error-text"></span>
                         </div>
-                    </div>
+                        <button type="submit" id="loginBtn" class="submit-btn-auth">登录</button>
+                    </form>
 
-                    <div id="registerFields" class="dynamic-fields hidden">
+                    <!-- 注册表单 -->
+                    <form id="registerForm" autocomplete="on" class="hidden">
+                        <div class="form-group">
+                            <label class="form-label" style="text-align: center; margin-bottom: 16px;">注册</label>
+                            <input 
+                                type="tel" 
+                                id="registerPhoneInput" 
+                                class="form-input" 
+                                placeholder="请输入11位手机号码"
+                                maxlength="11"
+                                inputmode="numeric"
+                                autocomplete="tel"
+                            >
+                            <div id="registerPhoneError" class="error-text"></div>
+                        </div>
                         <div class="form-group">
                             <div class="verify-code-wrapper">
                                 <input 
@@ -263,7 +279,6 @@
                                 <button type="button" id="getVerifyCodeBtn" class="verify-code-btn">获取验证码</button>
                             </div>
                         </div>
-
                         <div class="form-group">
                             <input 
                                 type="password" 
@@ -274,9 +289,26 @@
                             >
                             <span id="registerPasswordError" class="error-text"></span>
                         </div>
-                    </div>
+                        <button type="submit" id="registerBtn" class="submit-btn-auth">注册</button>
+                    </form>
 
-                    <button id="actionBtn" class="submit-btn-auth" disabled>请输入手机号</button>
+                    <!-- 初始手机号检查表单 -->
+                    <form id="phoneCheckForm" autocomplete="on">
+                        <div class="form-group">
+                            <label class="form-label" style="text-align: center; margin-bottom: 16px;">登录/注册</label>
+                            <input 
+                                type="tel" 
+                                id="phoneInput" 
+                                class="form-input" 
+                                placeholder="请输入11位手机号码"
+                                maxlength="11"
+                                inputmode="numeric"
+                                autocomplete="tel"
+                            >
+                            <div id="phoneError" class="error-text"></div>
+                        </div>
+                        <button type="submit" id="phoneCheckBtn" class="submit-btn-auth" disabled>请输入手机号</button>
+                    </form>
                 </div>
             </div>
         </div>
@@ -285,6 +317,8 @@
             轻羽速传 © 2025 - 帮你说出心里话
         </div>
     </div>
-  <script type="module" src="../js/login.js"></script>
+  <script src="../js/api-client.js"></script>
+  <script src="../js/common.js"></script>
+  <script src="../js/login.js"></script>
 </body>
 </html>

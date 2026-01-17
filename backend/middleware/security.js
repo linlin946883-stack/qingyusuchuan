@@ -346,9 +346,23 @@ class CSRFProtection {
   getTokenEndpoint() {
     return async (req, res) => {
       try {
+        // 检查请求头中是否已有 token
+        const existingToken = req.headers['x-csrf-token'];
+        
+        // 如果存在 token 且仍然有效，返回现有 token
+        if (existingToken) {
+          const isValid = await this.validateToken(existingToken);
+          if (isValid) {
+            return res.json({
+              code: 0,
+              data: { csrfToken: existingToken }
+            });
+          }
+        }
+        
+        // 否则生成新 token
         const token = this.generateToken();
         await this.storeToken(token);
-        console.log(`✓ 生成新CSRF Token: ${token.substring(0, 16)}...`);
         res.json({
           code: 0,
           data: { csrfToken: token }

@@ -1,0 +1,534 @@
+.page {
+  min-height: 100vh;
+  background: linear-gradient(180deg, #dafdf9 0%, #ecfdf5 100%);
+  padding-bottom: 80px;
+}
+
+/* 顶部介绍卡片 */
+.hero-card {
+  margin: 20px 15px;
+  padding: 28px 20px;
+  text-align: center;
+  background: linear-gradient(180deg, #dafdf9 0%, #ecfdf5 100%);
+  border-radius: 20px;
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.2);
+}
+
+.hero-icon {
+  font-size: 48px;
+  margin-bottom: 12px;
+  display: inline-block;
+}
+
+.hero-title {
+  font-size: 22px;
+  font-weight: 800;
+  color: #000000;
+  margin-bottom: 8px;
+}
+
+.hero-desc {
+  font-size: 15px;
+  color: #000000;
+  margin-bottom: 16px;
+  line-height: 1.6;
+}
+
+.hero-tags {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.tag {
+  padding: 6px 14px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 20px;
+  font-size: 13px;
+  color: #000000;
+  font-weight: 500;
+}
+
+/* 表单卡片 */
+.form-card {
+  margin: 0 15px 20px;
+  padding: 20px;
+  background: #ffffff;
+  border-radius: 18px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+}
+
+.form-item {
+  margin-bottom: 18px;
+}
+
+.form-item:last-child {
+  margin-bottom: 0;
+}
+
+.item-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.item-label {
+  font-size: 15px;
+  font-weight: 700;
+  color: #000000;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.preset-link {
+  font-size: 13px;
+  color: #667eea;
+  padding: 4px 10px;
+  background: #f0f4ff;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+/* 账号输入框 */
+.account-input {
+  width: 100%;
+  padding: 14px 14px;
+  background: #f9fafb;
+  border-radius: 10px;
+  border: 2px solid #e5e7eb;
+  font-size: 15px;
+  color: #000000;
+  transition: all 0.3s;
+}
+
+.account-input:focus {
+  border-color: #667eea;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  outline: none;
+}
+
+.account-textarea {
+  width: 100%;
+  padding: 14px;
+  background: #f9fafb;
+  border-radius: 10px;
+  border: 2px solid #e5e7eb;
+  font-size: 15px;
+  line-height: 1.7;
+  color: #000000;
+  resize: vertical;
+  min-height: 100px;
+  transition: all 0.3s;
+}
+
+.account-textarea:focus {
+  border-color: #667eea;
+  background: #ffffff;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  outline: none;
+}
+
+.error-hint {
+  display: block;
+  color: #ef4444;
+  font-size: 13px;
+  margin-top: 6px;
+  font-weight: 500;
+}
+
+/* 时间选择器 */
+.time-selector {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px;
+  background: #f9fafb;
+  border-radius: 10px;
+  border: 2px solid #e5e7eb;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.time-selector:active {
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.selector-text {
+  font-size: 15px;
+  color: #000000;
+}
+
+.selector-text.placeholder {
+  color: #000000;
+}
+
+.close-mini {
+  width: 24px;
+  height: 24px;
+  line-height: 24px;
+  text-align: center;
+  background: #e5e7eb;
+  color: #000000;
+  border-radius: 50%;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.close-mini:active {
+  background: #d1d5db;
+}
+
+/* 消息框 */
+.message-box {
+  position: relative;
+  background: #f9fafb;
+  border-radius: 10px;
+  border: 2px solid #e5e7eb;
+  overflow: hidden;
+}
+
+.message-textarea {
+  width: 100%;
+  min-height: 140px;
+  padding: 14px;
+  padding-bottom: 45px;
+  font-size: 15px;
+  line-height: 1.7;
+  color: #000000;
+  background: transparent;
+  border: none;
+  resize: vertical;
+}
+
+.message-footer {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  padding: 10px 14px;
+  background: linear-gradient(to top, rgba(249, 250, 251, 0.95), transparent);
+}
+
+.footer-left {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.char-count {
+  font-size: 13px;
+  color: #000000;
+  font-weight: 500;
+}
+
+.price-info {
+  font-size: 12px;
+  color: #000000;
+  display: none;
+}
+
+.preview-tag {
+  font-size: 13px;
+  font-weight: 600;
+  color: #667eea;
+  padding: 4px 10px;
+  background: #f0f4ff;
+  border-radius: 6px;
+  cursor: pointer;
+  display: none;
+}
+
+/* 提交按钮 */
+.submit-wrapper {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 15px;
+  background: linear-gradient(to top, #ffffff 85%, transparent);
+}
+
+.submit-btn {
+  width: 100%;
+  padding: 16px 0;
+  background: linear-gradient(180deg, #dafdf9 0%, #ecfdf5 100%);
+  border-radius: 12px;
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #000000;
+  font-size: 16px;
+  font-weight: 700;
+  transition: all 0.3s;
+}
+
+.submit-btn:active {
+  transform: translateY(2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+}
+
+.btn-icon {
+  font-size: 20px;
+}
+
+/* 时间选择弹窗 */
+.time-picker-modal {
+  background: #ffffff;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 400px;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 16px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.modal-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #000000;
+}
+
+.modal-cancel, .modal-confirm, .modal-close {
+  font-size: 14px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.modal-cancel {
+  color: #000000;
+}
+
+.modal-confirm {
+  color: #3b82f6;
+  font-weight: 600;
+}
+
+.modal-close {
+  color: #9ca3af;
+  font-size: 18px;
+}
+
+.picker-container {
+  padding: 20px 16px;
+}
+
+.datetime-input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+/* 文案选择弹窗 */
+.preset-modal {
+  width: 90%;
+  max-width: 600px;
+  max-height: 80vh;
+  background: #ffffff;
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.preset-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 10px 16px;
+  border-bottom: 1px solid #e5e7eb;
+  overflow-x: auto;
+  flex-shrink: 0;
+}
+
+.preset-tab {
+  padding: 6px 12px;
+  background: #f9fafb;
+  color: #000000;
+  font-size: 13px;
+  border-radius: 10px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.preset-tab.active {
+  background: #3b82f6;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.preset-list {
+  flex: 1;
+  padding: 12px 16px;
+  overflow-y: auto;
+}
+
+.preset-card {
+  padding: 12px;
+  margin-bottom: 8px;
+  background: #f9fafb;
+  border-radius: 6px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #000000;
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+
+.preset-card:active {
+  background: #eff6ff;
+  border-color: #3b82f6;
+}
+
+.preset-card:last-child {
+  margin-bottom: 0;
+}
+
+/* ====== 多列底部时间选择器（复刻 picker-view） ====== */
+.picker-sheet-overlay { position:fixed; inset:0; background:rgba(0,0,0,.5); display:flex; align-items:flex-end; justify-content:center; z-index:9999; animation:fadeInPicker .3s ease; }
+@keyframes fadeInPicker { from{opacity:0;} to{opacity:1;} }
+.picker-sheet { width:100%; background:#fff; border-radius:16px 16px 0 0; box-shadow:0 -4px 20px rgba(0,0,0,.12); padding-bottom: env(safe-area-inset-bottom); }
+.picker-header { display:flex; justify-content:space-between; align-items:center; padding:14px 16px; border-bottom:1px solid #f3f4f6; }
+.picker-title { font-size:16px; font-weight:700; color:#000000; }
+.picker-cancel, .picker-confirm { font-size:14px; font-weight:500; padding:6px 10px; border-radius:6px; cursor:pointer; }
+.picker-cancel { color:#000000; }
+.picker-cancel:active { background:#f3f4f6; }
+.picker-confirm { color:#3b82f6; font-weight:600; }
+.picker-confirm:active { background:#eff6ff; }
+.picker-view { position:relative; display:flex; height:200px; overflow:hidden; user-select:none; }
+.picker-column { flex:1; overflow-y:scroll; scrollbar-width:none; -ms-overflow-style:none; text-align:center; padding:0 2px; touch-action:pan-y; -webkit-overflow-scrolling:touch; }
+.picker-column::-webkit-scrollbar { display:none; }
+.picker-item { height:40px; line-height:40px; font-size:14px; color:#000000; font-weight:500; }
+.picker-item-empty { color:transparent; pointer-events:none; }
+.picker-indicator { position:absolute; left:0; right:0; top:80px; height:40px; border-top:1px solid #e5e7eb; border-bottom:1px solid #e5e7eb; pointer-events:none; }
+.quick-actions { display:flex; gap:8px; padding:12px 16px 16px; background:#f9fafb; border-top:1px solid #e5e7eb; }
+.quick-btn { flex:1; text-align:center; padding:10px 0; background:#ffffff; border:1px solid #e5e7eb; border-radius:8px; font-size:13px; color:#000000; font-weight:500; cursor:pointer; }
+.quick-btn:active { background:#eff6ff; border-color:#3b82f6; color:#3b82f6; }
+
+/* 复刻 textarea 与标签增强（从 rpx 转换） */
+.account-textarea { min-height:60px; }
+.message-textarea { min-height:120px; }
+.close-mini { display:inline-flex; align-items:center; justify-content:center; }
+
+/* ====== 短信预览弹窗（从底部滑出） ====== */
+.sms-preview-modal { position:fixed; inset:0; display:flex; flex-direction:column; z-index:9998; }
+.sms-preview-overlay { position:absolute; inset:0; background:rgba(0,0,0,.5); }
+.sms-preview-container { position:absolute; bottom:0; left:0; right:0; background:#fff; border-radius:16px 16px 0 0; max-height:85vh; display:flex; flex-direction:column; animation:slideUpPreview .3s ease forwards; box-shadow:0 -4px 20px rgba(0,0,0,.12); }
+@keyframes slideUpPreview { from{transform:translateY(100%);} to{transform:translateY(0);} }
+.sms-preview-header { display:flex; justify-content:space-between; align-items:center; padding:14px 16px; border-bottom:1px solid #f3f4f6; background:#f9fafb; }
+.sms-preview-title { font-size:16px; font-weight:700; color:#000000; }
+.sms-preview-close { font-size:24px; color:#9ca3af; cursor:pointer; padding:4px 8px; }
+.sms-preview-close:active { color:#6b7280; }
+.sms-preview-content { flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column; }
+.sms-preview-full { flex:1; display:flex; flex-direction:column; }
+.sms-preview-text-full { background:#f3f4f6; padding:14px; border-radius:8px; font-size:15px; color:#000000; line-height:1.8; word-break:break-word; flex:1; border-left:4px solid #3b82f6; white-space:pre-wrap; }
+.sms-preview-item { margin-bottom:16px; }
+.sms-preview-count { font-size:12px; color:#9ca3af; margin-bottom:6px; font-weight:500; }
+.sms-preview-text { background:#f3f4f6; padding:12px; border-radius:8px; font-size:14px; color:#000000; line-height:1.6; word-break:break-word; border-left:3px solid #3b82f6; }
+.sms-preview-stats { padding:16px; border-top:1px solid #f3f4f6; background:#f9fafb; font-size:13px; color:#6b7280; text-align:center; }
+
+/* ==================== 祝福短信表单 ==================== */
+.sms-form-container {
+  margin: 30px 15px;
+  padding: 24px 20px;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.sms-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-group label {
+  font-size: 15px;
+  font-weight: 600;
+  color: #000000;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  padding: 12px 14px;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 14px;
+  color: #000000;
+  font-family: inherit;
+  transition: all 0.3s ease;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.form-group textarea {
+  resize: vertical;
+  min-height: 100px;
+  max-height: 200px;
+}
+
+.char-count {
+  font-size: 12px;
+  color: #9ca3af;
+  text-align: right;
+}
+
+.submit-btn {
+  padding: 14px 28px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-top: 10px;
+}
+
+.submit-btn:active {
+  transform: scale(0.98);
+}
+
+@media (max-width: 600px) {
+  .sms-form-container {
+    margin: 20px 10px;
+    padding: 16px 14px;
+  }
+  
+  .submit-btn {
+    padding: 12px 24px;
+    font-size: 15px;
+  }
+}

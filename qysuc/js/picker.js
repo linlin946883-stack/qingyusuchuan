@@ -81,21 +81,13 @@ class TimePicker {
     this.selectedSecond = now.getSeconds();
     
     this.sheet.style.display = 'flex';
-    if (typeof disableBodyScroll === 'function') {
-      disableBodyScroll();
-    }
     this.renderAllColumns();
     
     setTimeout(() => this.bindColumnEvents(), 200);
   }
 
   close() {
-    if (this.sheet) {
-      this.sheet.style.display = 'none';
-      if (typeof enableBodyScroll === 'function') {
-        enableBodyScroll();
-      }
-    }
+    if (this.sheet) this.sheet.style.display = 'none';
   }
 
   bindColumnEvents() {
@@ -470,6 +462,3 @@ class TimePicker {
     return `${y}-${M}-${D} ${h}:${m}:${s}`;
   }
 }
-
-// 暴露到全局作用域
-window.TimePicker = TimePicker;

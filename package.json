@@ -4,11 +4,7 @@
   "description": "轻羽速传 - 前端",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview",
-    "server": "node server.js"
+    "start": "node server.js"
   },
   "keywords": [
     "轻羽速传",
@@ -19,8 +15,5 @@
   "license": "ISC",
   "engines": {
     "node": ">=14.0.0"
-  },
-  "devDependencies": {
-    "vite": "^7.3.1"
   }
 }
