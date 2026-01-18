@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>微信授权测试页面</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    
+    .container {
+      background: white;
+      border-radius: 20px;
+      padding: 40px;
+      max-width: 500px;
+      width: 100%;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+    
+    h1 {
+      color: #333;
+      margin-bottom: 10px;
+      font-size: 24px;
+      text-align: center;
+    }
+    
+    .subtitle {
+      color: #666;
+      text-align: center;
+      margin-bottom: 30px;
+      font-size: 14px;
+    }
+    
+    .user-info {
+      display: none;
+      padding: 20px;
+      background: #f5f7fa;
+      border-radius: 10px;
+      margin-bottom: 20px;
+    }
+    
+    .user-info.show {
+      display: block;
+    }
+    
+    .user-avatar {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      margin: 0 auto 15px;
+      display: block;
+      border: 3px solid #667eea;
+    }
+    
+    .user-detail {
+      text-align: center;
+      margin: 8px 0;
+      color: #333;
+    }
+    
+    .user-detail strong {
+      color: #667eea;
+    }
+    
+    .btn-group {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+    
+    button {
+      width: 100%;
+      padding: 15px;
+      border: none;
+      border-radius: 10px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    button::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 0;
+      height: 0;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.3);
+      transform: translate(-50%, -50%);
+      transition: width 0.6s, height 0.6s;
+    }
+    
+    button:active::before {
+      width: 300px;
+      height: 300px;
+    }
+    
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+    
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+    }
+    
+    .btn-secondary {
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      color: white;
+    }
+    
+    .btn-secondary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(245, 87, 108, 0.4);
+    }
+    
+    .btn-info {
+      background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+      color: white;
+    }
+    
+    .btn-info:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(79, 172, 254, 0.4);
+    }
+    
+    .btn-danger {
+      background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+      color: white;
+    }
+    
+    .status {
+      margin-top: 20px;
+      padding: 15px;
+      background: #e7f3ff;
+      border-left: 4px solid #667eea;
+      border-radius: 5px;
+      font-size: 14px;
+      color: #333;
+    }
+    
+    .status code {
+      background: white;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-family: 'Courier New', monospace;
+      color: #667eea;
+    }
+    
+    .description {
+      margin-bottom: 20px;
+      padding: 15px;
+      background: #fff9e6;
+      border-radius: 8px;
+      font-size: 13px;
+      color: #666;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔐 微信网页授权测试</h1>
+    <p class="subtitle">测试微信授权登录功能</p>
+    
+    <div class="user-info" id="userInfo">
+      <img src="" alt="用户头像" class="user-avatar" id="userAvatar">
+      <div class="user-detail">
+        <strong>昵称：</strong><span id="userName"></span>
+      </div>
+      <div class="user-detail">
+        <strong>OpenID：</strong><span id="userOpenId"></span>
+      </div>
+      <div class="user-detail">
+        <strong>余额：</strong><span id="userBalance"></span> 元
+      </div>
+    </div>
+    
+    <div class="description">
+      <strong>📝 说明：</strong><br>
+      • <strong>静默授权</strong>：不弹窗，只获取 openid<br>
+      • <strong>用户信息授权</strong>：需确认，可获取头像昵称等<br>
+      • <strong>请在微信中打开此页面进行测试</strong>
+    </div>
+    
+    <div class="btn-group">
+      <button class="btn-primary" onclick="testSilentAuth()">
+        🚀 测试静默授权 (snsapi_base)
+      </button>
+      
+      <button class="btn-secondary" onclick="testUserInfoAuth()">
+        👤 测试用户信息授权 (snsapi_userinfo)
+      </button>
+      
+      <button class="btn-info" onclick="checkLoginStatus()">
+        🔍 检查登录状态
+      </button>
+      
+      <button class="btn-danger" onclick="logout()">
+        🚪 退出登录
+      </button>
+    </div>
+    
+    <div class="status">
+      <strong>当前状态：</strong><br>
+      <span id="statusText">等待操作...</span>
+    </div>
+  </div>
+  
+  <script src="./js/config.js"></script>
+  <script src="./js/common.js"></script>
+  <script>
+    // 页面加载时检查登录状态
+    window.addEventListener('DOMContentLoaded', async () => {
+      updateStatus('页面加载完成');
+      
+      // 检查是否从授权回调返回
+      const authResult = getTokenFromUrl();
+      if (authResult) {
+        updateStatus('✅ 授权成功！Token 已保存');
+        await loadUserInfo();
+        return;
+      }
+      
+      // 检查现有登录状态
+      if (hasToken()) {
+        updateStatus('✅ 已登录');
+        await loadUserInfo();
+      } else {
+        updateStatus('❌ 未登录');
+      }
+      
+      // 检查是否在微信浏览器中
+      if (isWeChatBrowser()) {
+        updateStatus('✅ 检测到微信浏览器');
+      } else {
+        updateStatus('⚠️ 当前不在微信浏览器中，部分功能无法使用');
+      }
+    });
+    
+    // 测试静默授权
+    async function testSilentAuth() {
+      if (!isWeChatBrowser()) {
+        showToast('请在微信中打开');
+        updateStatus('❌ 不在微信浏览器中');
+        return;
+      }
+      
+      updateStatus('🔄 准备跳转到微信授权页面（静默授权）...');
+      
+      // 延迟一下让用户看到提示
+      setTimeout(() => {
+        wechatAuth('snsapi_base', window.location.pathname);
+      }, 500);
+    }
+    
+    // 测试用户信息授权
+    async function testUserInfoAuth() {
+      if (!isWeChatBrowser()) {
+        showToast('请在微信中打开');
+        updateStatus('❌ 不在微信浏览器中');
+        return;
+      }
+      
+      updateStatus('🔄 准备跳转到微信授权页面（用户信息授权）...');
+      
+      setTimeout(() => {
+        wechatAuth('snsapi_userinfo', window.location.pathname);
+      }, 500);
+    }
+    
+    // 检查登录状态
+    async function checkLoginStatus() {
+      if (!hasToken()) {
+        updateStatus('❌ 未登录，请先进行微信授权');
+        showToast('请先进行微信授权');
+        return;
+      }
+      
+      updateStatus('🔄 正在获取用户信息...');
+      await loadUserInfo();
+    }
+    
+    // 加载用户信息
+    async function loadUserInfo() {
+      try {
+        const response = await fetch(`${window.API_BASE_URL}/api/users/me`, {
+          headers: getAuthHeaders()
+        });
+        
+        const result = await response.json();
+        
+        if (result.code === 0) {
+          const user = result.data;
+          
+          // 显示用户信息
+          document.getElementById('userAvatar').src = user.avatar || 'https://via.placeholder.com/80';
+          document.getElementById('userName').textContent = user.nickname || '未设置';
+          document.getElementById('userOpenId').textContent = user.openid ? user.openid.substring(0, 16) + '...' : '未获取';
+          document.getElementById('userBalance').textContent = (user.balance || 0).toFixed(2);
+          document.getElementById('userInfo').classList.add('show');
+          
+          updateStatus(`✅ 登录成功！欢迎 ${user.nickname}`);
+          showToast('获取用户信息成功');
+        } else {
+          updateStatus('❌ 获取用户信息失败：' + result.message);
+          showToast(result.message);
+        }
+      } catch (error) {
+        console.error('获取用户信息失败:', error);
+        updateStatus('❌ 网络错误：' + error.message);
+        showToast('网络错误，请重试');
+      }
+    }
+    
+    // 退出登录
+    function logout() {
+      removeToken();
+      localStorage.removeItem('userInfo');
+      document.getElementById('userInfo').classList.remove('show');
+      updateStatus('✅ 已退出登录');
+      showToast('已退出登录');
+    }
+    
+    // 更新状态显示
+    function updateStatus(text) {
+      const statusEl = document.getElementById('statusText');
+      const timestamp = new Date().toLocaleTimeString();
+      statusEl.innerHTML = `<code>${timestamp}</code> ${text}`;
+    }
+  </script>
+</body>
+</html>

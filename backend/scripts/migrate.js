@@ -87,12 +87,14 @@ const executeSQL = async () => {
         status ENUM('pending', 'processing', 'completed', 'failed') DEFAULT 'pending',
         price DECIMAL(10, 2),
         remark TEXT,
+        idempotency_key VARCHAR(100) COMMENT '幂等性密钥，防止重复提交',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
         INDEX idx_user_id (user_id),
         INDEX idx_status (status),
-        INDEX idx_created_at (created_at)
+        INDEX idx_created_at (created_at),
+        INDEX idx_idempotency_key (user_id, idempotency_key)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
     console.log('✓ orders表创建成功');
@@ -119,9 +121,6 @@ const executeSQL = async () => {
     // 插入预设文案
     await connection.query(`
       INSERT IGNORE INTO presets (type, category, content) VALUES
-      ('sms', 'business', '尊敬的客户，我们是清语速川公司...'),
-      ('sms', 'notification', '您的验证码为: 123456'),
-      ('sms', 'reminder', '您有一个待处理的订单，请及时确认')
     `);
     console.log('✓ 预设文案插入成功');
 

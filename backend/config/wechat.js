@@ -11,7 +11,7 @@
 require('dotenv').config();
 
 module.exports = {
-  // 小程序 AppID
+  //  AppID
   appid: process.env.WECHAT_APPID || '',
   
   // 小程序密钥

@@ -21,15 +21,35 @@ const server = http.createServer((req, res) => {
   const pathname = parsedUrl.pathname;
   let filePath = path.join(__dirname, pathname);
   
-  // 默认路由到index.html
+  // 根据域名返回不同的入口文件
+  const host = req.headers.host || '';
+  
   if (req.url === '/') {
-    filePath = path.join(__dirname, 'index.html');
+    // min.lov2u.cn 指向 admin.html
+    if (host.includes('min.lov2u.cn')) {
+      filePath = path.join(__dirname, 'admin.html');
+    }
+    // i.lov2u.cn 指向 index.html
+    else if (host.includes('i.lov2u.cn')) {
+      filePath = path.join(__dirname, 'index.html');
+    }
+    // 默认 lov2u.cn 指向 qysuc/daohang.html
+    else {
+      filePath = path.join(__dirname, 'qysuc', 'daohang.html');
+    }
   } else if (path.extname(pathname) === '') {
     // 如果没有扩展名，尝试添加.html
     if (fs.existsSync(filePath + '.html')) {
       filePath += '.html';
     } else if (!fs.existsSync(filePath)) {
-      filePath = path.join(__dirname, 'index.html');
+      // 根据域名返回不同的默认页面
+      if (host.includes('min.lov2u.cn')) {
+        filePath = path.join(__dirname, 'admin.html');
+      } else if (host.includes('i.lov2u.cn')) {
+        filePath = path.join(__dirname, 'index.html');
+      } else {
+        filePath = path.join(__dirname, 'qysuc', 'daohang.html');
+      }
     }
   }
 

@@ -592,3 +592,90 @@ function throttle(func, limit) {
   };
 }
 
+// ==================== 微信网页授权 ====================
+
+/**
+ * 检测是否在微信浏览器中
+ */
+function isWeChatBrowser() {
+  const ua = navigator.userAgent.toLowerCase();
+  return /micromessenger/.test(ua);
+}
+
+/**
+ * 发起微信网页授权
+ * @param {string} scope - 授权作用域：'snsapi_base' 或 'snsapi_userinfo'
+ * @param {string} redirectPath - 授权成功后跳转的页面路径（可选）
+ */
+async function wechatAuth(scope = 'snsapi_base', redirectPath = '') {
+  try {
+    if (!isWeChatBrowser()) {
+      showToast('请在微信中打开');
+      return;
+    }
+    
+    // 从后端获取授权 URL
+    const response = await fetch(
+      `${window.API_BASE_URL}/api/auth/wechat/auth-url?scope=${scope}&redirectPath=${encodeURIComponent(redirectPath)}`,
+      {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+      }
+    );
+    
+    const result = await response.json();
+    if (result.code === 0 && result.data.authUrl) {
+      // 重定向到微信授权页面
+      window.location.href = result.data.authUrl;
+    } else {
+      showToast('获取授权链接失败');
+    }
+  } catch (error) {
+    console.error('微信授权失败:', error);
+    showToast('授权失败，请重试');
+  }
+}
+
+/**
+ * 直接构建微信授权 URL（前端方式）
+ * @param {string} appid - 微信公众号 appid
+ * @param {string} redirectUri - 授权回调地址（需要 URL encode）
+ * @param {string} scope - 授权作用域
+ * @param {string} state - 自定义参数
+ * @returns {string} 完整的授权 URL
+ */
+function buildWeChatAuthUrl(appid, redirectUri, scope = 'snsapi_base', state = '') {
+  const baseUrl = 'https://open.weixin.qq.com/connect/oauth2/authorize';
+  const params = new URLSearchParams({
+    appid: appid,
+    redirect_uri: redirectUri,
+    response_type: 'code',
+    scope: scope,
+    state: state
+  });
+  
+  return `${baseUrl}?${params.toString()}#wechat_redirect`;
+}
+
+/**
+ * 从 URL 参数中获取微信授权回调的 token
+ */
+function getTokenFromUrl() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const token = urlParams.get('token');
+  const openid = urlParams.get('openid');
+  
+  if (token) {
+    setToken(token);
+    // 清除 URL 中的敏感参数
+    const url = new URL(window.location.href);
+    url.searchParams.delete('token');
+    url.searchParams.delete('openid');
+    window.history.replaceState({}, '', url.toString());
+    
+    return { token, openid };
+  }
+  
+  return null;
+}
+
