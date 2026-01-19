@@ -34,12 +34,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // 设置所有事件监听器
 function setupEventListeners() {
-    // 账号卡片点击
-    const accountCard = document.getElementById('accountCard');
-    if (accountCard) {
-        accountCard.addEventListener('click', handleLoginClick);
-    }
-    
     // 订单展开/收起按钮
     const toggleBtn = document.getElementById('toggleOrdersBtn');
     if (toggleBtn) {
@@ -161,12 +155,15 @@ async function checkLoginStatusMy() {
             // 网络错误，不清除 token，稍后可能会恢复
         }
     } else {
-        console.log('未找到登录token');
+        console.log('未找到登录token，准备发起微信授权');
+        // 自动发起微信授权登录
+        autoWechatLogin();
+        return;
     }
     
-    // 未登录状态
+    // 未登录状态（授权失败后的回退）
     isLoggedInMy = false;
-    document.getElementById('accountName').textContent = '点击登录';
+    document.getElementById('accountName').textContent = '微信用户';
     document.getElementById('accountOpenid').textContent = '';
     document.getElementById('logoutBtn').style.display = 'none';
     document.getElementById('ordersSection').style.display = 'none';
@@ -428,18 +425,24 @@ function getEmptyHintMy() {
     return hints[currentTabMy] || '暂无订单';
 }
 
-// 处理登入点击
-function handleLoginClick() {
-    if (isLoggedInMy) {
-        return;
-    }
-    
+// 自动微信登录
+function autoWechatLogin() {
     // 检查是否在微信浏览器中
     if (!isWeChatBrowser()) {
+        console.log('不在微信浏览器中，无法自动登录');
         showToast('请在微信中打开');
         return;
     }
     
+    // 检查URL参数，避免授权失败后的无限循环
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('error')) {
+        console.log('授权失败，不再自动发起授权');
+        showToast('授权失败: ' + urlParams.get('error'));
+        return;
+    }
+    
+    console.log('🔐 自动发起微信授权登录');
     // 发起微信授权（获取用户信息）
     wechatAuth('snsapi_userinfo', '/pages/my.html');
 }
@@ -467,7 +470,7 @@ function handleLogoutMy() {
     
     // 更新UI
     document.getElementById('userAvatar').src = '../icon/touxiang.svg';
-    document.getElementById('accountName').textContent = '点击登录';
+    document.getElementById('accountName').textContent = '微信用户';
     document.getElementById('accountOpenid').textContent = '';
     document.getElementById('logoutBtn').style.display = 'none';
     document.getElementById('ordersSection').style.display = 'none';
