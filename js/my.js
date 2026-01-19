@@ -145,14 +145,23 @@ async function checkLoginStatusMy() {
                 if (response.status === 401) {
                     console.log('Token 已失效，清除登录状态');
                     removeToken();
+                    // 重新发起授权
+                    autoWechatLogin();
+                    return;
                 } else {
                     // 其他错误，显示提示但不清除 token
-                    console.log('API 返回错误，但保留 token');
+                    console.log('API 返回错误，但保留 token，显示未登录状态');
+                    // 显示未登录状态，但不自动拉起授权
+                    showNotLoggedInState();
+                    return;
                 }
             }
         } catch (error) {
             console.error('获取用户信息异常:', error);
-            // 网络错误，不清除 token，稍后可能会恢复
+            // 网络错误，不清除 token，显示未登录状态但不自动拉起授权
+            console.log('网络错误，保留 token，显示未登录状态');
+            showNotLoggedInState();
+            return;
         }
     } else {
         console.log('未找到登录token，准备发起微信授权');
@@ -160,8 +169,10 @@ async function checkLoginStatusMy() {
         autoWechatLogin();
         return;
     }
-    
-    // 未登录状态（授权失败后的回退）
+}
+
+// 显示未登录状态（不拉起授权）
+function showNotLoggedInState() {
     isLoggedInMy = false;
     document.getElementById('accountName').textContent = '微信用户';
     document.getElementById('accountOpenid').textContent = '';
@@ -431,6 +442,7 @@ function autoWechatLogin() {
     if (!isWeChatBrowser()) {
         console.log('不在微信浏览器中，无法自动登录');
         showToast('请在微信中打开');
+        showNotLoggedInState();
         return;
     }
     
@@ -439,8 +451,24 @@ function autoWechatLogin() {
     if (urlParams.has('error')) {
         console.log('授权失败，不再自动发起授权');
         showToast('授权失败: ' + urlParams.get('error'));
+        showNotLoggedInState();
         return;
     }
+    
+    // 检查是否刚刚完成过授权（防止重复授权）
+    const lastAuthTime = sessionStorage.getItem('last_auth_time');
+    if (lastAuthTime) {
+        const timeDiff = Date.now() - parseInt(lastAuthTime);
+        // 5秒内不重复授权
+        if (timeDiff < 5000) {
+            console.log('刚刚完成授权，跳过自动授权');
+            showNotLoggedInState();
+            return;
+        }
+    }
+    
+    // 记录授权时间
+    sessionStorage.setItem('last_auth_time', Date.now().toString());
     
     console.log('🔐 自动发起微信授权登录');
     // 发起微信授权（获取用户信息）

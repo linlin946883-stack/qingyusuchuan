@@ -67,24 +67,53 @@ function hideLoading() {
 // 本地存储工具
 const storage = {
   set(key, value) {
-    localStorage.setItem(key, JSON.stringify(value));
+    try {
+      localStorage.setItem(key, JSON.stringify(value));
+      return true;
+    } catch (error) {
+      console.error('❌ localStorage.setItem 失败:', error);
+      // 可能是隐私模式或存储已满
+      if (error.name === 'QuotaExceededError') {
+        console.error('存储空间已满');
+      } else if (error.name === 'SecurityError') {
+        console.error('安全错误，可能是隐私模式');
+      }
+      return false;
+    }
   },
   
   get(key) {
-    const value = localStorage.getItem(key);
     try {
-      return value ? JSON.parse(value) : null;
-    } catch {
-      return value;
+      const value = localStorage.getItem(key);
+      try {
+        return value ? JSON.parse(value) : null;
+      } catch {
+        return value;
+      }
+    } catch (error) {
+      console.error('❌ localStorage.getItem 失败:', error);
+      return null;
     }
   },
   
   remove(key) {
-    localStorage.removeItem(key);
+    try {
+      localStorage.removeItem(key);
+      return true;
+    } catch (error) {
+      console.error('❌ localStorage.removeItem 失败:', error);
+      return false;
+    }
   },
   
   clear() {
-    localStorage.clear();
+    try {
+      localStorage.clear();
+      return true;
+    } catch (error) {
+      console.error('❌ localStorage.clear 失败:', error);
+      return false;
+    }
   }
 };
 
@@ -101,14 +130,27 @@ if (!window.API_BASE_URL) {
  * 保存 Token 到本地存储
  */
 function setToken(token) {
+  if (!token) {
+    console.error('❌ 尝试保存空token!');
+    return false;
+  }
+  
   console.log('💾 保存 Token 到 localStorage');
-  storage.set('auth_token', token);
-  // 验证保存是否成功
-  const saved = storage.get('auth_token');
-  if (saved === token) {
-    console.log('✅ Token 保存成功');
-  } else {
-    console.error('❌ Token 保存失败!');
+  try {
+    storage.set('auth_token', token);
+    // 验证保存是否成功
+    const saved = storage.get('auth_token');
+    if (saved === token) {
+      console.log('✅ Token 保存成功，长度:', token.length);
+      return true;
+    } else {
+      console.error('❌ Token 保存失败! 保存的值不匹配');
+      console.error('原始token长度:', token.length, '读取的token:', saved ? saved.length : 'null');
+      return false;
+    }
+  } catch (error) {
+    console.error('❌ Token 保存异常:', error);
+    return false;
   }
 }
 
@@ -129,9 +171,17 @@ function getToken() {
  * 清除 Token
  */
 function removeToken() {
-  console.log('🗑️ 清除 Token');
+  const currentToken = storage.get('auth_token');
+  console.log('🗑️ 清除 Token，当前token存在:', !!currentToken);
   console.trace('removeToken 调用栈:');
   storage.remove('auth_token');
+  // 验证清除
+  const afterRemove = storage.get('auth_token');
+  if (afterRemove) {
+    console.error('⚠️ 警告: Token清除失败，仍然存在!');
+  } else {
+    console.log('✅ Token已成功清除');
+  }
 }
 
 /**
@@ -694,20 +744,31 @@ function getTokenFromUrl() {
   
   console.log('🔍 检查 URL 中的 token 参数');
   console.log('URL:', window.location.href);
-  console.log('Token:', token ? '已找到' : '未找到');
+  console.log('Token:', token ? `已找到(${token.length}字符)` : '未找到');
   console.log('OpenID:', openid ? '已找到' : '未找到');
   
   if (token) {
     console.log('✅ 从 URL 获取到 token，正在保存...');
-    setToken(token);
-    // 清除 URL 中的敏感参数
-    const url = new URL(window.location.href);
-    url.searchParams.delete('token');
-    url.searchParams.delete('openid');
-    window.history.replaceState({}, '', url.toString());
-    console.log('✅ URL 参数已清理');
+    const saved = setToken(token);
     
-    return { token, openid };
+    if (saved) {
+      // 清除 URL 中的敏感参数
+      try {
+        const url = new URL(window.location.href);
+        url.searchParams.delete('token');
+        url.searchParams.delete('openid');
+        url.searchParams.delete('code'); // 也清除code参数
+        window.history.replaceState({}, '', url.toString());
+        console.log('✅ URL 参数已清理');
+      } catch (error) {
+        console.error('⚠️ 清理URL参数失败:', error);
+      }
+      
+      return { token, openid };
+    } else {
+      console.error('❌ Token保存失败，不清理URL参数');
+      return null;
+    }
   }
   
   return null;
