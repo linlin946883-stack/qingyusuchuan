@@ -4,6 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>人工传话</title>
+    <!-- 微信浏览器检测 -->
+    <script>
+      (function() {
+        var ua = navigator.userAgent.toLowerCase();
+        if (ua.indexOf('micromessenger') === -1) {
+          window.location.href = './404.html';
+        }
+      })();
+    </script>
     <!-- 配置文件必须首先加载 -->
     <script src="../js/config.js"></script>
     <link rel="stylesheet" href="../css/common.css">

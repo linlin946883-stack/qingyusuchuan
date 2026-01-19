@@ -392,16 +392,12 @@ window.APIClient = APIClient;
 
 // 监听认证过期事件
 window.addEventListener('auth:expired', () => {
+  console.log('🔄 认证已过期，已自动清除登录状态');
+  
   // 清除用户信息
   localStorage.removeItem('userInfo');
   
-  // 如果不在首页或登录页，跳转到首页
-  const currentPath = window.location.pathname;
-  if (!currentPath.includes('index.html') && currentPath !== '/') {
-    setTimeout(() => {
-      window.location.href = '/index.html';
-    }, 1500);
-  }
+  // 静默处理，不显示alert，让用户自然地重新登录
 });
 
 

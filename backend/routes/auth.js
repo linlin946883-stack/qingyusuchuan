@@ -373,6 +373,15 @@ router.get('/user/:id', async (req, res, next) => {
 router.get('/wechat/auth-url', (req, res) => {
   try {
     const wechatConfig = require('../config/wechat');
+    
+    // 检查配置
+    if (!wechatConfig.appid) {
+      return res.status(500).json({
+        code: 500,
+        message: '微信配置错误：WECHAT_APPID 未配置，请在 .env 文件中配置'
+      });
+    }
+    
     const { redirectPath = '/pages/my.html', scope = 'snsapi_base', state = '' } = req.query;
     
     // 授权后的回调地址（需要在微信公众平台配置网页授权域名）
@@ -408,6 +417,9 @@ router.get('/wechat/auth-url', (req, res) => {
 /**
  * 微信授权回调接口
  * 用户授权后，微信会重定向到这个地址，并带上 code 参数
+ * 
+ * 成功：redirect_uri/?code=CODE&state=STATE
+ * 失败：redirect_uri/?state=STATE (不带code)
  */
 router.get('/wechat/callback', async (req, res) => {
   try {
@@ -415,8 +427,16 @@ router.get('/wechat/callback', async (req, res) => {
     const wechatConfig = require('../config/wechat');
     const axios = require('axios');
     
+    // 用户拒绝授权或授权失败
     if (!code) {
-      return res.redirect('/pages/login.html?error=授权失败');
+      const redirectPath = state || '/index.html';
+      return res.redirect(`${redirectPath}${redirectPath.includes('?') ? '&' : '?'}error=` + encodeURIComponent('授权失败'));
+    }
+    
+    // 检查配置
+    if (!wechatConfig.appid || !wechatConfig.appSecret) {
+      const redirectPath = state || '/index.html';
+      return res.redirect(`${redirectPath}${redirectPath.includes('?') ? '&' : '?'}error=` + encodeURIComponent('配置错误'));
     }
     
     // 1. 通过 code 获取 access_token 和 openid
@@ -428,10 +448,17 @@ router.get('/wechat/callback', async (req, res) => {
       `&grant_type=authorization_code`;
     
     const tokenResponse = await axios.get(tokenUrl);
-    const { access_token, openid, scope } = tokenResponse.data;
+    const { access_token, expires_in, refresh_token, openid, scope, errmsg, errcode } = tokenResponse.data;
+    
+    // 检查微信接口返回的错误
+    if (errcode) {
+      const redirectPath = state || '/index.html';
+      return res.redirect(`${redirectPath}${redirectPath.includes('?') ? '&' : '?'}error=` + encodeURIComponent('授权失败'));
+    }
     
     if (!openid) {
-      return res.redirect('/pages/login.html?error=获取用户信息失败');
+      const redirectPath = state || '/index.html';
+      return res.redirect(`${redirectPath}${redirectPath.includes('?') ? '&' : '?'}error=` + encodeURIComponent('获取用户信息失败'));
     }
     
     let userInfo = { openid };
@@ -444,16 +471,26 @@ router.get('/wechat/callback', async (req, res) => {
         `&openid=${openid}` +
         `&lang=zh_CN`;
       
-      const userInfoResponse = await axios.get(userInfoUrl);
-      userInfo = {
-        openid: userInfoResponse.data.openid,
-        nickname: userInfoResponse.data.nickname,
-        avatar: userInfoResponse.data.headimgurl,
-        sex: userInfoResponse.data.sex,
-        province: userInfoResponse.data.province,
-        city: userInfoResponse.data.city,
-        country: userInfoResponse.data.country
-      };
+      try {
+        const userInfoResponse = await axios.get(userInfoUrl);
+        
+        if (!userInfoResponse.data.errcode) {
+          const wxUserInfo = userInfoResponse.data;
+          userInfo = {
+            openid: wxUserInfo.openid,
+            nickname: wxUserInfo.nickname || '微信用户',
+            avatar: wxUserInfo.headimgurl || '',
+            sex: wxUserInfo.sex || 0,
+            province: wxUserInfo.province || '',
+            city: wxUserInfo.city || '',
+            country: wxUserInfo.country || '',
+            privilege: wxUserInfo.privilege || [],
+            unionid: wxUserInfo.unionid || null
+          };
+        }
+      } catch (error) {
+        // 继续用 openid 登录
+      }
     }
     
     // 3. 自动登录/注册用户
@@ -468,6 +505,7 @@ router.get('/wechat/callback', async (req, res) => {
       if (rows.length > 0) {
         // 更新用户信息
         user = rows[0];
+        
         if (userInfo.nickname) {
           await connection.execute(
             'UPDATE users SET nickname = ?, avatar = ?, updated_at = NOW() WHERE id = ?',
@@ -501,16 +539,18 @@ router.get('/wechat/callback', async (req, res) => {
       });
       
       // 5. 重定向到目标页面，并通过 URL 参数传递 token
-      const redirectPath = state || '/pages/my.html';
-      res.redirect(`${redirectPath}?token=${token}&openid=${openid}`);
+      const redirectPath = state || '/index.html';
+      const redirectUrl = `${redirectPath}${redirectPath.includes('?') ? '&' : '?'}token=${token}&openid=${openid}`;
+      
+      res.redirect(redirectUrl);
       
     } finally {
       connection.release();
     }
     
   } catch (error) {
-    console.error('微信授权回调错误:', error);
-    res.redirect('/pages/login.html?error=' + encodeURIComponent(error.message));
+    const redirectPath = req.query.state || '/index.html';
+    res.redirect(`${redirectPath}${redirectPath.includes('?') ? '&' : '?'}error=` + encodeURIComponent('系统错误'));
   }
 });
 

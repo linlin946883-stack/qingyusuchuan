@@ -81,6 +81,9 @@ function initRelayCallPage() {
 
 // 检查登录状态 - Call页面
 function checkLoginStatusCall() {
+    // 检查URL中是否有token参数（微信授权回调）
+    getTokenFromUrl();
+    
     isLoggedInCall = hasToken() && getUserInfo();
 }
 
@@ -132,9 +135,9 @@ function updateSubmitButtonCall() {
     }
 }
 
-// 跳转到登录页面 - Call
+// 显示登录提示 - Call
 function goToLoginCall() {
-    window.location.href = 'login.html?return=' + encodeURIComponent(window.location.href);
+    showToast('请先登录');
 }
 
 function validatePhone() {

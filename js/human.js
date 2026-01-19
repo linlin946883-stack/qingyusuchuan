@@ -50,6 +50,9 @@ function updatePriceDisplay() {
 
 // 检查登录状态 - Human页面
 function checkLoginStatusHuman() {
+  // 检查URL中是否有token参数（微信授权回调）
+  getTokenFromUrl();
+  
   isLoggedInHuman = hasToken() && getUserInfo();
   updateSubmitButtonHuman();
 }
@@ -70,9 +73,9 @@ function updateSubmitButtonHuman() {
   }
 }
 
-// 跳转到登录页面 - Human
+// 显示登录提示 - Human
 function goToLoginHuman() {
-  window.location.href = 'login.html?return=' + encodeURIComponent(window.location.href);
+  showToast('请先登录');
 }
 
 function initHumanPage() {

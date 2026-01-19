@@ -1,5 +1,7 @@
 // 首页初始化
 document.addEventListener('DOMContentLoaded', function() {
+  // 检查URL中是否有token参数（微信授权回调）
+  getTokenFromUrl();
   
   // 添加卡片点击反馈
   const serviceCards = document.querySelectorAll('.service-card');

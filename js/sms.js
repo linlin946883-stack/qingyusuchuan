@@ -117,6 +117,9 @@ async function loadPrices() {
 
 // 检查登录状态 - SMS页面
 function checkLoginStatusSms() {
+  // 检查URL中是否有token参数（微信授权回调）
+  getTokenFromUrl();
+  
   isLoggedInSms = hasToken() && !!getUserInfo();
   updateSubmitButtonSms();
 }
@@ -145,9 +148,9 @@ function updateSubmitButtonSms() {
   }
 }
 
-// 跳转到登录页面 - SMS
+// 显示登录提示 - SMS
 function goToLoginSms() {
-  window.location.href = 'login.html?return=' + encodeURIComponent(window.location.href);
+  showToast('请在微信中使用此功能');
 }
 
 // 在适当的时机调用 setupPage

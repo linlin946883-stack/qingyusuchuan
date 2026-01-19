@@ -1,12 +1,28 @@
 // 状态管理
 let isLoggedInMy = false;
 let userNameMy = '';
-let userPhoneMy = '';
+let userOpenidMy = '';
+let userAvatarMy = '';
 let userIdMy = null;
 let ordersMy = [];
 let ordersLoadingMy = false;
 let showOrdersMy = false;
 let currentTabMy = 'all';
+
+// 解析 JWT Token
+function parseJwt(token) {
+    try {
+        const base64Url = token.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join(''));
+        return JSON.parse(jsonPayload);
+    } catch (e) {
+        console.error('解析 JWT 失败:', e);
+        return null;
+    }
+}
 
 // 页面初始化
 document.addEventListener('DOMContentLoaded', () => {
@@ -76,61 +92,158 @@ function setupEventListeners() {
 }
 
 // 检查登录状态
-function checkLoginStatusMy() {
-    // 优先检查 Token
+async function checkLoginStatusMy() {
+    // 检查 URL 中是否有 token 参数（微信授权回调）
+    getTokenFromUrl();
+    
+    // 检查是否有 Token
     if (hasToken()) {
-        const userInfo = getUserInfo();
-        if (userInfo) {
-            userIdMy = userInfo.user_id;
-            isLoggedInMy = true;
-            userNameMy = userInfo.nickname || '用户';
-            userPhoneMy = userInfo.phone || '';
+        try {
+            console.log('正在获取用户信息...');
+            console.log('API_BASE_URL:', window.API_BASE_URL);
             
-            // 更新UI
-            document.getElementById('accountName').textContent = userPhoneMy || '未登录';
-            document.getElementById('accountPhone').style.display = 'none';
-            document.getElementById('logoutBtn').style.display = 'block';
-            document.getElementById('ordersSection').style.display = 'block';
+            // API_BASE_URL 已经包含 /api，所以直接拼接 /users/
+            const apiUrl = window.API_BASE_URL + '/users/';
+            console.log('请求URL:', apiUrl);
             
-            // 可选：验证 Token 是否仍然有效
-            verifyTokenAndUpdateUI();
+            const response = await fetch(apiUrl, {
+                method: 'GET',
+                headers: getAuthHeaders()
+            });
             
-            loadOrdersMy();
-            return;
+            console.log('用户信息响应状态:', response.status);
+            
+            const result = await response.json();
+            console.log('用户信息响应数据:', result);
+            
+            if (result.code === 0 && result.data) {
+                const user = result.data;
+                userIdMy = user.id;
+                isLoggedInMy = true;
+                userNameMy = user.nickname || '微信用户';
+                userOpenidMy = user.openid || '';
+                userAvatarMy = user.avatar || '';
+                
+                console.log('用户信息获取成功:', {
+                    id: userIdMy,
+                    nickname: userNameMy,
+                    openid: userOpenidMy,
+                    avatar: userAvatarMy
+                });
+                
+                // 验证 token 中的 userId 是否匹配
+                const tokenData = parseJwt(getToken());
+                console.log('Token 中的用户信息:', tokenData);
+                if (tokenData && tokenData.userId !== userIdMy) {
+                    console.error('⚠️ 警告: Token 中的 userId 与返回的用户 ID 不匹配!');
+                    console.error('Token userId:', tokenData.userId, 'API userId:', userIdMy);
+                }
+                
+                // 更新UI
+                updateUserUI();
+                
+                // 加载订单
+                loadOrdersMy();
+                return;
+            } else {
+                console.error('获取用户信息失败:', result.message);
+                // 如果是 401 错误，说明 token 已失效
+                if (response.status === 401) {
+                    console.log('Token 已失效，清除登录状态');
+                    removeToken();
+                } else {
+                    // 其他错误，显示提示但不清除 token
+                    console.log('API 返回错误，但保留 token');
+                }
+            }
+        } catch (error) {
+            console.error('获取用户信息异常:', error);
+            // 网络错误，不清除 token，稍后可能会恢复
         }
+    } else {
+        console.log('未找到登录token');
     }
     
-    // 未登录状态 - 跳转到登录页面
+    // 未登录状态
     isLoggedInMy = false;
-    window.location.href = 'login.html?return=' + encodeURIComponent(window.location.href);
+    document.getElementById('accountName').textContent = '点击登录';
+    document.getElementById('accountOpenid').textContent = '';
+    document.getElementById('logoutBtn').style.display = 'none';
+    document.getElementById('ordersSection').style.display = 'none';
 }
 
-/**
- * 验证 Token 并更新 UI
- */
-async function verifyTokenAndUpdateUI() {
-    try {
-        const result = await verifyToken();
-        if (result.code !== 0) {
-            // Token 无效，自动登出
-            handleLogoutMy();
-        }
-    } catch (err) {
-        console.error('Token 验证出错:', err);
+// 更新用户UI显示
+function updateUserUI() {
+    console.log('更新UI显示:', {
+        nickname: userNameMy,
+        avatar: userAvatarMy,
+        openid: userOpenidMy
+    });
+    
+    // 更新头像
+    const avatarEl = document.getElementById('userAvatar');
+    if (userAvatarMy) {
+        console.log('设置头像URL:', userAvatarMy);
+        avatarEl.src = userAvatarMy;
+        avatarEl.onerror = function() {
+            console.log('头像加载失败，使用默认头像');
+            this.src = '../icon/touxiang.svg';
+        };
+    } else {
+        console.log('无头像URL，使用默认头像');
+        avatarEl.src = '../icon/touxiang.svg';
     }
+    
+    // 更新昵称
+    console.log('设置昵称:', userNameMy);
+    document.getElementById('accountName').textContent = userNameMy;
+    
+    // 显示 openid （截断）
+    if (userOpenidMy) {
+        const shortOpenid = userOpenidMy.length > 20 
+            ? userOpenidMy.substring(0, 10) + '...' + userOpenidMy.substring(userOpenidMy.length - 6)
+            : userOpenidMy;
+        document.getElementById('accountOpenid').textContent = 'ID: ' + shortOpenid;
+        console.log('设置OpenID显示:', shortOpenid);
+    }
+    
+    // 显示退出按钮和订单区
+    document.getElementById('logoutBtn').style.display = 'block';
+    document.getElementById('ordersSection').style.display = 'block';
+    
+    console.log('UI更新完成');
 }
 
 // 加载用户订单列表
 async function loadOrdersMy() {
-    if (!userIdMy) return;
+    if (!userIdMy) {
+        console.log('❌ 没有用户ID，跳过加载订单');
+        return;
+    }
     
     ordersLoadingMy = true;
     try {
+        console.log('📦 开始加载订单，用户ID:', userIdMy);
+        
+        // 验证 token
+        const token = getToken();
+        if (!token) {
+            console.error('❌ 加载订单时发现 token 已丢失!');
+            return;
+        }
+        
+        const tokenData = parseJwt(token);
+        console.log('Token 数据:', tokenData);
+        
         const response = await getOrders(userIdMy);
+        console.log('📦 订单响应:', response);
+        
         if (response.code === 0) {
             ordersMy = Array.isArray(response.data) ? response.data : [];
+            console.log('✅ 订单加载成功，数量:', ordersMy.length);
         } else {
-            showToast(response.message || '加载订单失败');
+            console.warn('⚠️ 订单加载失败:', response.message);
+            // 不显示错误提示，避免影响用户体验
         }
         
         // 如果订单列表已展开，刷新显示
@@ -138,9 +251,12 @@ async function loadOrdersMy() {
             displayFilteredOrdersMy();
         }
     } catch (err) {
-        showToast('加载订单失败');
+        console.error('❌ 加载订单异常:', err);
+        console.trace('异常调用栈:');
+        // 不显示错误提示，避免影响用户体验
     } finally {
         ordersLoadingMy = false;
+        console.log('📦 订单加载流程结束');
     }
 }
 
@@ -318,40 +434,21 @@ function handleLoginClick() {
         return;
     }
     
-    // 使用 openid 自动登入
-    performLoginMy('h5_user_' + Date.now());
-}
-
-// 执行登入
-async function performLoginMy(openid) {
-    try {
-        showLoading('登入中...');
-        const result = await userLogin(openid, '用户', '👤');
-        
-        if (result.code === 0) {
-            // 更新本地状态
-            userIdMy = result.data.user.id;
-            isLoggedInMy = true;
-            userNameMy = result.data.user.nickname || '用户';
-            userPhoneMy = result.data.user.phone || '';
-            
-            hideLoading();
-            
-            // 更新UI
-            checkLoginStatusMy();
-            
-            // 加载订单列表
-            await loadOrdersMy();
-        } else {
-            hideLoading();
-        }
-    } catch (err) {
-        hideLoading();
+    // 检查是否在微信浏览器中
+    if (!isWeChatBrowser()) {
+        showToast('请在微信中打开');
+        return;
     }
+    
+    // 发起微信授权（获取用户信息）
+    wechatAuth('snsapi_userinfo', '/pages/my.html');
 }
 
 // 处理登出
 function handleLogoutMy() {
+    console.log('🚪 执行退出登录操作');
+    console.trace('退出登录调用栈:');
+    
     // 清除登录状态
     userLogout();
     
@@ -361,22 +458,21 @@ function handleLogoutMy() {
     // 重置状态
     isLoggedInMy = false;
     userNameMy = '';
-    userPhoneMy = '';
+    userOpenidMy = '';
+    userAvatarMy = '';
     userIdMy = null;
     ordersMy = [];
     showOrdersMy = false;
     currentTabMy = 'all';
     
     // 更新UI
-    document.getElementById('accountName').textContent = '未登录';
-    document.getElementById('accountPhone').style.display = 'none';
+    document.getElementById('userAvatar').src = '../icon/touxiang.svg';
+    document.getElementById('accountName').textContent = '点击登录';
+    document.getElementById('accountOpenid').textContent = '';
     document.getElementById('logoutBtn').style.display = 'none';
     document.getElementById('ordersSection').style.display = 'none';
     
-    // 返回首页
-    setTimeout(() => {
-        window.location.href = '../index.html';
-    }, 300);
+    showToast('已退出登录');
 }
 
 // 联系客服

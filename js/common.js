@@ -101,20 +101,36 @@ if (!window.API_BASE_URL) {
  * 保存 Token 到本地存储
  */
 function setToken(token) {
+  console.log('💾 保存 Token 到 localStorage');
   storage.set('auth_token', token);
+  // 验证保存是否成功
+  const saved = storage.get('auth_token');
+  if (saved === token) {
+    console.log('✅ Token 保存成功');
+  } else {
+    console.error('❌ Token 保存失败!');
+  }
 }
 
 /**
  * 从本地存储获取 Token
  */
 function getToken() {
-  return storage.get('auth_token');
+  const token = storage.get('auth_token');
+  if (token) {
+    console.log('📖 从 localStorage 读取到 Token');
+  } else {
+    console.log('❌ localStorage 中没有 Token');
+  }
+  return token;
 }
 
 /**
  * 清除 Token
  */
 function removeToken() {
+  console.log('🗑️ 清除 Token');
+  console.trace('removeToken 调用栈:');
   storage.remove('auth_token');
 }
 
@@ -144,15 +160,13 @@ function getAuthHeaders() {
  */
 function handleApiError(response, data) {
   if (response.status === 401) {
-    // Token 无效或过期
+    console.log('🔄 Token已过期，已自动清除，请重新登录');
+    
+    // Token 无效或过期 - 静默清除
     removeToken();
     storage.remove('userInfo');
-    // 可以重定向到登录页
-    setTimeout(() => {
-      if (window.location.pathname !== '/' && !window.location.pathname.includes('index.html')) {
-        window.location.href = '../index.html';
-      }
-    }, 1500);
+    
+    // 不显示alert，让用户自然地点击登录
   }
   return data;
 }
@@ -614,24 +628,37 @@ async function wechatAuth(scope = 'snsapi_base', redirectPath = '') {
       return;
     }
     
-    // 从后端获取授权 URL
-    const response = await fetch(
-      `${window.API_BASE_URL}/api/auth/wechat/auth-url?scope=${scope}&redirectPath=${encodeURIComponent(redirectPath)}`,
-      {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' }
-      }
-    );
+    console.log('🔐 开始微信授权流程');
+    console.log('授权作用域:', scope);
+    console.log('回调路径:', redirectPath);
+    console.log('API_BASE_URL:', window.API_BASE_URL);
+    
+    // 从后端获取授权 URL（API_BASE_URL 已包含 /api）
+    const apiUrl = `${window.API_BASE_URL}/auth/wechat/auth-url?scope=${scope}&redirectPath=${encodeURIComponent(redirectPath)}`;
+    console.log('请求授权URL接口:', apiUrl);
+    
+    const response = await fetch(apiUrl, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    
+    console.log('授权URL响应状态:', response.status);
     
     const result = await response.json();
+    console.log('授权URL响应数据:', result);
+    
     if (result.code === 0 && result.data.authUrl) {
+      console.log('✅ 获取授权链接成功，即将跳转...');
+      console.log('授权链接:', result.data.authUrl);
       // 重定向到微信授权页面
       window.location.href = result.data.authUrl;
     } else {
+      console.error('❌ 获取授权链接失败:', result.message);
       showToast('获取授权链接失败');
     }
   } catch (error) {
-    console.error('微信授权失败:', error);
+    console.error('❌ 微信授权异常:', error);
+    console.trace('异常调用栈:');
     showToast('授权失败，请重试');
   }
 }
@@ -665,13 +692,20 @@ function getTokenFromUrl() {
   const token = urlParams.get('token');
   const openid = urlParams.get('openid');
   
+  console.log('🔍 检查 URL 中的 token 参数');
+  console.log('URL:', window.location.href);
+  console.log('Token:', token ? '已找到' : '未找到');
+  console.log('OpenID:', openid ? '已找到' : '未找到');
+  
   if (token) {
+    console.log('✅ 从 URL 获取到 token，正在保存...');
     setToken(token);
     // 清除 URL 中的敏感参数
     const url = new URL(window.location.href);
     url.searchParams.delete('token');
     url.searchParams.delete('openid');
     window.history.replaceState({}, '', url.toString());
+    console.log('✅ URL 参数已清理');
     
     return { token, openid };
   }
