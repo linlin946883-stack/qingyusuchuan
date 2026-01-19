@@ -117,10 +117,8 @@ async function loadPrices() {
 
 // 检查登录状态 - SMS页面
 function checkLoginStatusSms() {
-  // 检查URL中是否有token参数（微信授权回调）
-  getTokenFromUrl();
-  
-  isLoggedInSms = hasToken() && !!getUserInfo();
+  // 只检查token是否存在，不需要同时检查userInfo
+  isLoggedInSms = hasToken();
   updateSubmitButtonSms();
 }
 

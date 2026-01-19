@@ -50,10 +50,8 @@ function updatePriceDisplay() {
 
 // 检查登录状态 - Human页面
 function checkLoginStatusHuman() {
-  // 检查URL中是否有token参数（微信授权回调）
-  getTokenFromUrl();
-  
-  isLoggedInHuman = hasToken() && getUserInfo();
+  // 只检查token是否存在，不需要同时检查userInfo
+  isLoggedInHuman = hasToken();
   updateSubmitButtonHuman();
 }
 

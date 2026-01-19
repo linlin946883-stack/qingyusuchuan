@@ -81,10 +81,8 @@ function initRelayCallPage() {
 
 // 检查登录状态 - Call页面
 function checkLoginStatusCall() {
-    // 检查URL中是否有token参数（微信授权回调）
-    getTokenFromUrl();
-    
-    isLoggedInCall = hasToken() && getUserInfo();
+    // 只检查token是否存在，不需要同时检查userInfo
+    isLoggedInCall = hasToken();
 }
 
 // 请求页面的提交Token

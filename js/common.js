@@ -137,17 +137,17 @@ function setToken(token) {
   
   console.log('💾 保存 Token 到 localStorage');
   try {
-    storage.set('auth_token', token);
+    // 直接写入原始字符串，避免被 JSON.stringify 包装
+    localStorage.setItem('auth_token', token);
     // 验证保存是否成功
-    const saved = storage.get('auth_token');
+    const saved = localStorage.getItem('auth_token');
     if (saved === token) {
       console.log('✅ Token 保存成功，长度:', token.length);
       return true;
-    } else {
-      console.error('❌ Token 保存失败! 保存的值不匹配');
-      console.error('原始token长度:', token.length, '读取的token:', saved ? saved.length : 'null');
-      return false;
     }
+    console.error('❌ Token 保存失败! 保存的值不匹配');
+    console.error('原始token长度:', token.length, '读取的token:', saved ? saved.length : 'null');
+    return false;
   } catch (error) {
     console.error('❌ Token 保存异常:', error);
     return false;
@@ -158,7 +158,15 @@ function setToken(token) {
  * 从本地存储获取 Token
  */
 function getToken() {
-  const token = storage.get('auth_token');
+  let token = localStorage.getItem('auth_token');
+  // 兼容历史 JSON.stringify 版本（带引号）
+  if (token && token.startsWith('"') && token.endsWith('"')) {
+    try {
+      token = JSON.parse(token);
+    } catch {
+      // 保留原值
+    }
+  }
   if (token) {
     console.log('📖 从 localStorage 读取到 Token');
   } else {
@@ -171,12 +179,12 @@ function getToken() {
  * 清除 Token
  */
 function removeToken() {
-  const currentToken = storage.get('auth_token');
+  const currentToken = localStorage.getItem('auth_token');
   console.log('🗑️ 清除 Token，当前token存在:', !!currentToken);
   console.trace('removeToken 调用栈:');
-  storage.remove('auth_token');
+  localStorage.removeItem('auth_token');
   // 验证清除
-  const afterRemove = storage.get('auth_token');
+  const afterRemove = localStorage.getItem('auth_token');
   if (afterRemove) {
     console.error('⚠️ 警告: Token清除失败，仍然存在!');
   } else {
@@ -268,148 +276,6 @@ async function refreshUserInfo() {
     console.error('刷新用户信息失败:', error);
   }
   return null;
-}
-
-// ==================== 认证接口 ====================
-
-// 用户登录（微信授权）
-async function userLogin(openid, nickname, avatar) {
-  try {
-    const data = await apiClient.post('/auth/login', {
-      openid,
-      nickname,
-      avatar
-    }, { skipCSRF: true });
-    
-    if (data.code === 0 && data.data.token) {
-      // 保存 Token
-      setToken(data.data.token);
-      apiClient.setAuthToken(data.data.token);
-      
-      // 保存用户信息
-      const userInfo = {
-        user_id: data.data.user.id,
-        openid: data.data.user.openid,
-        nickname: data.data.user.nickname,
-        avatar: data.data.user.avatar,
-        phone: data.data.user.phone,
-        balance: data.data.user.balance,
-        role: data.data.user.role || 'user'
-      };
-      setUserInfo(userInfo);
-    }
-    
-    return data;
-  } catch (error) {
-    console.error('登录失败:', error);
-    return {
-      code: 500,
-      message: ''
-    };
-  }
-}
-
-// 用户注册（用户名密码）
-async function userRegister(username, password, phone, verifyCode) {
-  try {
-    const data = await apiClient.post('/auth/register', {
-      username,
-      password,
-      phone,
-      verifyCode
-    }, { skipCSRF: true });
-    
-    if (data.code === 0 && data.data.token) {
-      setToken(data.data.token);
-      apiClient.setAuthToken(data.data.token);
-      
-      const userInfo = {
-        user_id: data.data.user.id,
-        phone: data.data.user.phone,
-        nickname: data.data.user.nickname,
-        avatar: data.data.user.avatar,
-        balance: data.data.user.balance,
-        role: data.data.user.role || 'user'
-      };
-      setUserInfo(userInfo);
-    }
-    
-    return data;
-  } catch (error) {
-    console.error('注册失败:', error);
-    return {
-      code: 500,
-      message: ''
-    };
-  }
-}
-
-// 用户登录（用户名密码）
-async function userLoginPassword(phone, password) {
-  try {
-    const data = await apiClient.post('/auth/login-password', {
-      phone,
-      password
-    }, { skipCSRF: true });
-    
-    if (data.code === 0 && data.data.token) {
-      setToken(data.data.token);
-      apiClient.setAuthToken(data.data.token);
-      
-      const userInfo = {
-        user_id: data.data.user.id,
-        phone: data.data.user.phone,
-        nickname: data.data.user.nickname,
-        avatar: data.data.user.avatar,
-        balance: data.data.user.balance,
-        role: data.data.user.role || 'user'
-      };
-      setUserInfo(userInfo);
-    }
-    
-    return data;
-  } catch (error) {
-    console.error('登录失败:', error);
-    return {
-      code: error.code || 500,
-      message: error.message || ''
-    };
-  }
-}
-
-// 查询手机号是否已注册
-async function checkPhoneExists(phone) {
-  try {
-    const data = await apiClient.get(`/auth/phone/${phone}`, {}, { skipCSRF: true });
-
-    if (data.code === 0 && data.data) {
-      return !!data.data.exists;
-    }
-
-    return null;
-  } catch (error) {
-    console.error('查询手机号失败:', error);
-    return null;
-  }
-}
-
-// 验证 Token 有效性
-async function verifyToken() {
-  try {
-    const data = await apiClient.get('/auth/verify', {}, { skipCSRF: true });
-    return data;
-  } catch (error) {
-    console.error('Token 验证失败:', error);
-    return {
-      code: 500,
-      message: ''
-    };
-  }
-}
-
-// 用户注销
-function userLogout() {
-  clearUserInfo();
 }
 
 // ==================== 业务接口 ====================
@@ -654,123 +520,5 @@ function throttle(func, limit) {
       setTimeout(() => inThrottle = false, limit);
     }
   };
-}
-
-// ==================== 微信网页授权 ====================
-
-/**
- * 检测是否在微信浏览器中
- */
-function isWeChatBrowser() {
-  const ua = navigator.userAgent.toLowerCase();
-  return /micromessenger/.test(ua);
-}
-
-/**
- * 发起微信网页授权
- * @param {string} scope - 授权作用域：'snsapi_base' 或 'snsapi_userinfo'
- * @param {string} redirectPath - 授权成功后跳转的页面路径（可选）
- */
-async function wechatAuth(scope = 'snsapi_base', redirectPath = '') {
-  try {
-    if (!isWeChatBrowser()) {
-      showToast('请在微信中打开');
-      return;
-    }
-    
-    console.log('🔐 开始微信授权流程');
-    console.log('授权作用域:', scope);
-    console.log('回调路径:', redirectPath);
-    console.log('API_BASE_URL:', window.API_BASE_URL);
-    
-    // 从后端获取授权 URL（API_BASE_URL 已包含 /api）
-    const apiUrl = `${window.API_BASE_URL}/auth/wechat/auth-url?scope=${scope}&redirectPath=${encodeURIComponent(redirectPath)}`;
-    console.log('请求授权URL接口:', apiUrl);
-    
-    const response = await fetch(apiUrl, {
-      method: 'GET',
-      headers: { 'Content-Type': 'application/json' }
-    });
-    
-    console.log('授权URL响应状态:', response.status);
-    
-    const result = await response.json();
-    console.log('授权URL响应数据:', result);
-    
-    if (result.code === 0 && result.data.authUrl) {
-      console.log('✅ 获取授权链接成功，即将跳转...');
-      console.log('授权链接:', result.data.authUrl);
-      // 重定向到微信授权页面
-      window.location.href = result.data.authUrl;
-    } else {
-      console.error('❌ 获取授权链接失败:', result.message);
-      showToast('获取授权链接失败');
-    }
-  } catch (error) {
-    console.error('❌ 微信授权异常:', error);
-    console.trace('异常调用栈:');
-    showToast('授权失败，请重试');
-  }
-}
-
-/**
- * 直接构建微信授权 URL（前端方式）
- * @param {string} appid - 微信公众号 appid
- * @param {string} redirectUri - 授权回调地址（需要 URL encode）
- * @param {string} scope - 授权作用域
- * @param {string} state - 自定义参数
- * @returns {string} 完整的授权 URL
- */
-function buildWeChatAuthUrl(appid, redirectUri, scope = 'snsapi_base', state = '') {
-  const baseUrl = 'https://open.weixin.qq.com/connect/oauth2/authorize';
-  const params = new URLSearchParams({
-    appid: appid,
-    redirect_uri: redirectUri,
-    response_type: 'code',
-    scope: scope,
-    state: state
-  });
-  
-  return `${baseUrl}?${params.toString()}#wechat_redirect`;
-}
-
-/**
- * 从 URL 参数中获取微信授权回调的 token
- */
-function getTokenFromUrl() {
-  const urlParams = new URLSearchParams(window.location.search);
-  const token = urlParams.get('token');
-  const openid = urlParams.get('openid');
-  
-  console.log('🔍 检查 URL 中的 token 参数');
-  console.log('URL:', window.location.href);
-  console.log('Token:', token ? `已找到(${token.length}字符)` : '未找到');
-  console.log('OpenID:', openid ? '已找到' : '未找到');
-  
-  if (token) {
-    console.log('✅ 从 URL 获取到 token，正在保存...');
-    const saved = setToken(token);
-    
-    if (saved) {
-      // 清除 URL 中的敏感参数
-      try {
-        const url = new URL(window.location.href);
-        url.searchParams.delete('token');
-        url.searchParams.delete('openid');
-        url.searchParams.delete('code'); // 也清除code参数
-        window.history.replaceState({}, '', url.toString());
-        console.log('✅ URL 参数已清理');
-      } catch (error) {
-        console.error('⚠️ 清理URL参数失败:', error);
-      }
-      
-      return { token, openid };
-    } else {
-      console.error('❌ Token保存失败，不清理URL参数');
-      return null;
-    }
-  }
-  
-  return null;
 }
 

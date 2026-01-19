@@ -87,88 +87,8 @@ function setupEventListeners() {
 
 // 检查登录状态
 async function checkLoginStatusMy() {
-    // 检查 URL 中是否有 token 参数（微信授权回调）
-    getTokenFromUrl();
-    
-    // 检查是否有 Token
-    if (hasToken()) {
-        try {
-            console.log('正在获取用户信息...');
-            console.log('API_BASE_URL:', window.API_BASE_URL);
-            
-            // API_BASE_URL 已经包含 /api，所以直接拼接 /users/
-            const apiUrl = window.API_BASE_URL + '/users/';
-            console.log('请求URL:', apiUrl);
-            
-            const response = await fetch(apiUrl, {
-                method: 'GET',
-                headers: getAuthHeaders()
-            });
-            
-            console.log('用户信息响应状态:', response.status);
-            
-            const result = await response.json();
-            console.log('用户信息响应数据:', result);
-            
-            if (result.code === 0 && result.data) {
-                const user = result.data;
-                userIdMy = user.id;
-                isLoggedInMy = true;
-                userNameMy = user.nickname || '微信用户';
-                userOpenidMy = user.openid || '';
-                userAvatarMy = user.avatar || '';
-                
-                console.log('用户信息获取成功:', {
-                    id: userIdMy,
-                    nickname: userNameMy,
-                    openid: userOpenidMy,
-                    avatar: userAvatarMy
-                });
-                
-                // 验证 token 中的 userId 是否匹配
-                const tokenData = parseJwt(getToken());
-                console.log('Token 中的用户信息:', tokenData);
-                if (tokenData && tokenData.userId !== userIdMy) {
-                    console.error('⚠️ 警告: Token 中的 userId 与返回的用户 ID 不匹配!');
-                    console.error('Token userId:', tokenData.userId, 'API userId:', userIdMy);
-                }
-                
-                // 更新UI
-                updateUserUI();
-                
-                // 加载订单
-                loadOrdersMy();
-                return;
-            } else {
-                console.error('获取用户信息失败:', result.message);
-                // 如果是 401 错误，说明 token 已失效
-                if (response.status === 401) {
-                    console.log('Token 已失效，清除登录状态');
-                    removeToken();
-                    // 重新发起授权
-                    autoWechatLogin();
-                    return;
-                } else {
-                    // 其他错误，显示提示但不清除 token
-                    console.log('API 返回错误，但保留 token，显示未登录状态');
-                    // 显示未登录状态，但不自动拉起授权
-                    showNotLoggedInState();
-                    return;
-                }
-            }
-        } catch (error) {
-            console.error('获取用户信息异常:', error);
-            // 网络错误，不清除 token，显示未登录状态但不自动拉起授权
-            console.log('网络错误，保留 token，显示未登录状态');
-            showNotLoggedInState();
-            return;
-        }
-    } else {
-        console.log('未找到登录token，准备发起微信授权');
-        // 自动发起微信授权登录
-        autoWechatLogin();
-        return;
-    }
+    console.log('登录功能已禁用');
+    showNotLoggedInState();
 }
 
 // 显示未登录状态（不拉起授权）
@@ -436,52 +356,14 @@ function getEmptyHintMy() {
     return hints[currentTabMy] || '暂无订单';
 }
 
-// 自动微信登录
-function autoWechatLogin() {
-    // 检查是否在微信浏览器中
-    if (!isWeChatBrowser()) {
-        console.log('不在微信浏览器中，无法自动登录');
-        showToast('请在微信中打开');
-        showNotLoggedInState();
-        return;
-    }
-    
-    // 检查URL参数，避免授权失败后的无限循环
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.has('error')) {
-        console.log('授权失败，不再自动发起授权');
-        showToast('授权失败: ' + urlParams.get('error'));
-        showNotLoggedInState();
-        return;
-    }
-    
-    // 检查是否刚刚完成过授权（防止重复授权）
-    const lastAuthTime = sessionStorage.getItem('last_auth_time');
-    if (lastAuthTime) {
-        const timeDiff = Date.now() - parseInt(lastAuthTime);
-        // 5秒内不重复授权
-        if (timeDiff < 5000) {
-            console.log('刚刚完成授权，跳过自动授权');
-            showNotLoggedInState();
-            return;
-        }
-    }
-    
-    // 记录授权时间
-    sessionStorage.setItem('last_auth_time', Date.now().toString());
-    
-    console.log('🔐 自动发起微信授权登录');
-    // 发起微信授权（获取用户信息）
-    wechatAuth('snsapi_userinfo', '/pages/my.html');
-}
-
 // 处理登出
 function handleLogoutMy() {
     console.log('🚪 执行退出登录操作');
     console.trace('退出登录调用栈:');
     
-    // 清除登录状态
-    userLogout();
+    // 清除token和用户信息
+    removeToken();
+    clearUserInfo();
     
     // 停止轮询
     stopOrderPolling();
